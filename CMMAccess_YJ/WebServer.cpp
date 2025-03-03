@@ -1,6 +1,6 @@
 //canyon 2019 09 06
 
-#include "CMMDeviceConfig.h"
+#include "CMMConfig.h"
 #include "WebServer.h"
 #include "Poco/Timespan.h"
 #include "Poco/Exception.h"
@@ -102,12 +102,12 @@ namespace CMM
 					response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 					response.setContentType("application/json");
 					std::ostream& out = response.send();
-					out << CMMDeviceConfig::instance()->DecodeResponseJson(-1);
+					out << CMMConfig::instance()->GetDeviceConfig()->DecodeResponseJson(-1);
 					return;
 				}
 				CData devID = param.substr(nSize + 1);
 				LogInfo("devID : " << devID);
-				std::string content = CMMDeviceConfig::instance()->GetDevJson(devID);
+				std::string content =  CMMConfig::instance()->GetDeviceConfig()->GetDevJson(devID);
 				LogInfo("content: " << content);
 				response.setStatus(HTTPResponse::HTTP_OK);
 				response.setContentType("application/json");
@@ -118,7 +118,7 @@ namespace CMM
 			else if (path == "/GetAllDevice")
 			{
 			
-				std::string content = CMMDeviceConfig::instance()->GetDevJson();
+				std::string content =  CMMConfig::instance()->GetDeviceConfig()->GetDevJson();
 				LogInfo("content: " << content);
 				response.setStatus(HTTPResponse::HTTP_OK);
 				response.setContentType("application/json");
@@ -131,7 +131,7 @@ namespace CMM
 				response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 				response.setContentType("application/json");
 				std::ostream& out = response.send();
-				out << CMMDeviceConfig::instance()->DecodeResponseJson(-2);
+				out <<  CMMConfig::instance()->GetDeviceConfig()->DecodeResponseJson(-2);
 				return;
 			}
 			//std::string filePath = "/appdata/extModule/webServer/index.html"; // 手动构建文件路径  
@@ -164,27 +164,35 @@ namespace CMM
 				std::string content((std::istreambuf_iterator<char>(rs)),
 					std::istreambuf_iterator<char>());
 				LogInfo("content: " << content);
-				int nRet = CMMDeviceConfig::instance()->SetDevConf(content);
+				int nRet =  CMMConfig::instance()->GetDeviceConfig()->SetDevConf(content);
 				if (0 != nRet)
 				{
 					response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 					response.setContentType("application/json");
 					std::ostream& out = response.send();
-					out << CMMDeviceConfig::instance()->EncodeResponseJson(nRet);
+					out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(nRet);
 					return;
 				}
 				CMMConfig::instance()->UpdateCfgFile();  //同步更新CMMConfig dev conf内容
 				response.setStatus(HTTPResponse::HTTP_OK);
 				response.setContentType("application/json");
 				std::ostream& out = response.send();
-				out << CMMDeviceConfig::instance()->EncodeResponseJson(0);
+				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(0);
+			}
+			else if (path == "/api/LoadParams")
+			{
+
+			}
+			else if (path == "/api/SavaParams")
+			{
+
 			}
 			else
 			{
 				response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 				response.setContentType("application/json");
 				std::ostream& out = response.send();
-				out << CMMDeviceConfig::instance()->EncodeResponseJson(-2);
+				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(-2);
 				return;
 			}
 		}
@@ -199,7 +207,7 @@ namespace CMM
 			response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 			response.setContentType("application/json");
 			std::ostream& out = response.send();
-			out << CMMDeviceConfig::instance()->EncodeResponseJson(-2);
+			out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(-2);
 			return;
 		}
 
@@ -211,13 +219,13 @@ namespace CMM
 		else
 		{
 			LogNotice("Failed to send response.");
-			CWebServer::DisConnection();
+			WebServer::DisConnection();
 		}
 	}
 
-	bool CWebServer::m_bConnection = true;
+	bool WebServer::m_bConnection = true;
 
-	CWebServer::CWebServer()
+	WebServer::WebServer()
 	{
 		m_bStop = true;
 		m_listenPort = -1;
@@ -225,12 +233,12 @@ namespace CMM
 	}
 
 
-	CWebServer::~CWebServer()
+	WebServer::~WebServer()
 	{
 		Stop();
 	}
 
-	bool CWebServer::ListenPortChange(int nPort)
+	bool WebServer::ListenPortChange(int nPort)
 	{
 		if (m_listenPort != nPort)
 		{
@@ -241,7 +249,7 @@ namespace CMM
 		return false;
 	}
 
-	int CWebServer::Start(int port)
+	int WebServer::Start(int port)
 	{
 		if (m_bStop == false)
 		{
@@ -256,7 +264,7 @@ namespace CMM
 		return 0;
 	}
 
-	void CWebServer::DeleteConnection(CData clientIp, int port)
+	void WebServer::DeleteConnection(CData clientIp, int port)
 	{
 		CData key = clientIp;
 		key += ":";
@@ -264,7 +272,7 @@ namespace CMM
 		m_pFactory->DelHttpServerConnection(key);
 	}
 
-	int CWebServer::Stop()
+	int WebServer::Stop()
 	{
 		if (m_bStop)
 		{
@@ -290,7 +298,7 @@ namespace CMM
 		return 0;
 	}
 
-	void CWebServer::run()
+	void WebServer::run()
 	{
 		// 绑定端口并开始监听
 		m_ServerSocket = ServerSocket(m_listenPort);
@@ -342,7 +350,7 @@ namespace CMM
 		Stop();
 	}
 
-	void CWebServer::DisConnection()
+	void WebServer::DisConnection()
 	{
 		m_bConnection = false;
 	}

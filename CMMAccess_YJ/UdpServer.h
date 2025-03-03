@@ -19,14 +19,14 @@
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/SocketAddressImpl.h"
 #include "Poco/Net/Context.h"
-
+#include "DoorServerManger.h"
 #include "Data.h"
 
 using namespace Poco::Net;
 
 namespace CMM
 {
-class CUdpServer : public Poco::Runnable
+class CUdpServer : public ServerBase
 {
 	public:
 		CUdpServer();

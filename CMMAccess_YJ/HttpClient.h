@@ -21,12 +21,12 @@ using namespace Poco::Net;
 namespace CMM
 {
 
-	class CHttpClient :public HTTPClientSession
+	class HttpClient :public HTTPClientSession
 	{
 
 	public:
-		CHttpClient();
-		~CHttpClient();
+		HttpClient();
+		~HttpClient();
 		void Start();
 		/*
 		* 发送xml数据 返回1成功 -2超时 其他失败

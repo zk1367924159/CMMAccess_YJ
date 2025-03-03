@@ -1,7 +1,7 @@
 //canyon 2019 09 06
 
 #include "TransData.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 #include "CMMAccess.h"
 #include "CLog.h"
 //#include "openssl/openssl-1.1.1d/crypto/include/internal/sm3.h"
@@ -15,18 +15,18 @@ namespace CMM
 
 
 
-	CTransData::CTransData()
+	TransData::TransData()
 	{
 
 	}
 
-	CTransData::~CTransData()
+	TransData::~TransData()
 	{
 
 	}
 
 	// 定义一个函数来处理转义  
-	void CTransData::EscapeData(std::vector<uint8_t>::const_iterator start, std::vector<uint8_t>::const_iterator end ,std::vector<uint8_t>& packet)
+	void TransData::EscapeData(std::vector<uint8_t>::const_iterator start, std::vector<uint8_t>::const_iterator end ,std::vector<uint8_t>& packet)
 	{
 		while (start != end) 
 		{
@@ -57,7 +57,7 @@ namespace CMM
 	}
 
 	// 定义一个函数来处理反转义  
-	void CTransData::AntonymData(const std::vector<uint8_t>& data, int recvLen ,std::vector<uint8_t>& packet)
+	void TransData::AntonymData(const std::vector<uint8_t>& data, int recvLen ,std::vector<uint8_t>& packet)
 	{
 		int i = 0;
 		while (i < recvLen)
@@ -97,7 +97,7 @@ namespace CMM
 	}
 
 	// 计算异或校验值  
-	uint8_t CTransData::CalculateXORChecksum(const std::vector<uint8_t>& data, size_t headerLen, size_t tailLen) {
+	uint8_t TransData::CalculateXORChecksum(const std::vector<uint8_t>& data, size_t headerLen, size_t tailLen) {
 		uint8_t checksum = 0;
 		size_t dataSize = data.size();
 		if (dataSize >= headerLen + tailLen) 
@@ -111,7 +111,7 @@ namespace CMM
 		return checksum;
 	}
 
-	std::vector<uint8_t> CTransData::PackageSendData(std::vector<uint8_t>& uartData)
+	std::vector<uint8_t> TransData::PackageSendData(std::vector<uint8_t>& uartData)
 	{
 		
 		int nMaxPackageSize = 40 + uartData.size();
@@ -121,7 +121,7 @@ namespace CMM
 		for(int i = 0; i < 8; ++i)
 			packet.push_back(0x00);          //sc地址
 		
-		CData fsuId = CMMConfig::instance()->GetFsuId();
+		CData fsuId = CMMParam::instance()->m_FsuId;
 		if (uartData.size() <= 0 || fsuId.size() <= 0)
 		{
 			LogError("sendData length is so short : "<< uartData.size() <<"  or fsuid is null.");
@@ -138,7 +138,7 @@ namespace CMM
 		}
 
 		packet.push_back(0x01);    //子设备类型
-		uint8_t p_uart = ((CMMAccess::instance()->m_uartService->getUartID() & 0xf) << 4) | (CMMAccess::instance()->m_uartService->m_slaveID & 0xf);
+		uint8_t p_uart = ((CMMAccess::instance()->m_uartService->m_uartID & 0xf) << 4) | (CMMAccess::instance()->m_uartService->m_slaveID & 0xf);
 		LogInfo("p_uart: " << (int)p_uart);
 		packet.push_back(p_uart);    //串口号+地址号
 
@@ -172,7 +172,7 @@ namespace CMM
 		return packet_out;
 	}
 
-	std::vector<uint8_t> CTransData::PackageSendHeart()
+	std::vector<uint8_t> TransData::PackageSendHeart()
 	{
 		int nMaxPackageSize = 38;
 		std::vector<uint8_t>    packet;
@@ -181,7 +181,7 @@ namespace CMM
 		for (int i = 0; i < 8; ++i)
 			packet.push_back(0x00);          //sc地址
 
-		CData fsuId = CMMConfig::instance()->GetFsuId();
+		CData fsuId = CMMParam::instance()->m_FsuId;
 		if (fsuId.size() <= 0)
 		{
 			LogError("fsuid is null.");
@@ -198,7 +198,7 @@ namespace CMM
 		}
 
 		packet.push_back(0x01);    //子设备类型
-		uint8_t p_uart = ((CMMAccess::instance()->m_uartService->getUartID() & 0xf) << 4) | (CMMAccess::instance()->m_uartService->m_slaveID & 0xf);
+		uint8_t p_uart = ((CMMAccess::instance()->m_uartService->m_uartID & 0xf) << 4) | (CMMAccess::instance()->m_uartService->m_slaveID & 0xf);
 		LogInfo("p_uart: " << (int)p_uart);
 		packet.push_back(p_uart);    //串口号+地址号
 
@@ -226,7 +226,7 @@ namespace CMM
 		return packet_out;
 	}
 
-	bool CTransData::UnPackageRecvData(std::vector<uint8_t>& recvData,int recvLen, std::vector<uint8_t>& outData)
+	bool TransData::UnPackageRecvData(std::vector<uint8_t>& recvData,int recvLen, std::vector<uint8_t>& outData)
 	{
 		if (recvLen < 40)
 		{
@@ -255,9 +255,9 @@ namespace CMM
 			fsuid[i] = packet_out[i + 1];
 			//fsuid[i] = packet_out[i + 9];
 		std::string strFsuID(fsuid.begin(), fsuid.end());
-		/*if (CMMConfig::instance()->GetFsuId().compare(strFsuID) != 0)
+		/*if (CMMParam::instance()->m_FsuId.compare(strFsuID) != 0)
 		{
-			LogError("config fsuid :" << CMMConfig::instance()->GetFsuId().c_str() << " is different from recv fsuid: " << strFsuID.c_str());
+			LogError("config fsuid :" << CMMParam::instance()->m_FsuId.c_str() << " is different from recv fsuid: " << strFsuID.c_str());
 			return false;
 		}*/
 		int16_t xmlLen = (static_cast<uint16_t>(packet_out[37]) << 8) | static_cast<uint16_t>(packet_out[36]);

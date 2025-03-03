@@ -2,7 +2,7 @@
 
 #include "main.h"
 #include "CMMAccess.h"
-
+#include "CMMParam.h"
 #include "../../ExtAppIpc/ExtAppMain.hpp"
 
 
@@ -19,7 +19,18 @@ void ExtAppInitParam(std::list<std::tuple<CData, CData> >& param)
 
 int ExtAppUpdateParam(std::map<CData, CData>& paramMap,std::map<CData,CData>& errorMap)
 {
-	return CMM::CMMAccess::instance()->UpdateParam(paramMap, errorMap);
+	bool isUpdate = false;
+	for (auto &parameter : paramMap)
+    {
+        if (CMMParam::instance()->GetParam(parameter.first,"") != parameter.second)
+        {
+			isUpdate = true;
+            CMMParam::instance()->UpdateParam(parameter.first, parameter.second);
+        }
+    }
+	if(isUpdate)
+		CMMParam::instance()->writeJson2File();
+	return 0;
 }
 
 int ExtAppMsgNotify(CData type, std::map<CData, CData>& msg)

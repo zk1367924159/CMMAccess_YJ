@@ -6,20 +6,20 @@
 
 namespace CMM
 {
-	class CMeteTranslate
+	class CMMMeteTranslate
 	{
-	private:
-		std::map<CData, CData> m_metesMap;
-		static CMeteTranslate* _instance;
 	public:
-		static CMeteTranslate* Instance();
-		void Init();
-		CData FromInnerToCMM(int id, int &SignalNumber);
-		CData FromInnerToCMM(CData id);
-		CData FromCMMToInner( CData cmmId, int signalNumber );
-		int FromInnerPortTypeToCMM(int type, int dataType);
+	
+		static void Init(std::map<CData, CData>& metesMap);
+		
+		static CData FromCMMToInner( CData cmmId, int signalNumber );
 
-		int ConvertToCmmMeterType(CData meterType);
+		static int FromInnerPortTypeToCMM(int type, int dataType);
+
+		static int ConvertToCmmMeterType(CData meterType);
+
+		static CData FromInnerToCMM(int id, int &SignalNumber);
+
 	};
 }
 #endif

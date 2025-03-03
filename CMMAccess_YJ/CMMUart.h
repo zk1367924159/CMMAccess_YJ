@@ -33,7 +33,7 @@ namespace CMM
         void setStopBits(const int& stopBits);
         void setParity(const std::string& parity);
         void setUartName(const std::string& uartname);
-        int  getUartID();
+        std::string getUartName(CData uartname);
 
         bool writeData(std::vector<uint8_t>& uartData);
     protected:
@@ -46,6 +46,7 @@ namespace CMM
         int32_t                         m_stopBits;
         std::string                     m_parity;
         std::string                     m_uartname;
+		int								m_uartID;
         
     protected:
         bool                            m_running;

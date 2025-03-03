@@ -24,55 +24,77 @@
 
 namespace CMM{
 	namespace param{
-		const char* const SiteID = "站点编号";
-		const char* const SiteName = "站点名称";
-		const char* const RoomID = "机房编号";
-		const char* const RoomName = "机房名称";
-		const char* const xx = "经度";
-		const char* const yy = "纬度";
+	
+	/*	const char* const xx = "经度";
+		const char* const yy = "纬度";*/
 		
-		
-		const char* const FsuId  = "设备ID";
-		const char* const UserName = "设备账号";
-		const char* const Password = "设备密码";
-		const char* const AlgType = "散列算法";
-		const char* const FtpUsr = "FTP账号";
-		const char* const FtpPasswd = "FTP密码";
-		const char* const FtpUserName = "FTP账号";
-		const char* const FtpPassword = "FTP密码";
-		const char* const DeviceListJson = "设备列表Json";
-		const char* const IgnoreAlarmLevel = "过滤告警级别(如2,3)";
-		const char* const HeartBeatTimeout = "心跳超时（秒）";
-		const char* const LoginTimeout = "注册超时（秒）";
-		const char* const GetMeasurementTime= "监控数据文件（分）";
-		const char* const SCEndPoint = "CMM.SCEndPoint";
-		const char* const FsuEndPoint = "CMM.FSUEndPoint";
-		
-		const char* const SCDomain = "平台域名";
-		const char* const SCIp = "TCP平台IP";
-		const char* const SCPort = "TCP平台端口";
-		const char* const SCUdpIp = "UDP平台IP";
-		const char* const SCUdpPort = "UDP平台端口";
-		const char* const SCIpRoute = "平台路由";
-		const char* const FsuIp = "设备IP";
-		const char* const FsuPort = "TCP服务端口";
-		const char* const UdpPort = "UDP服务端口";
-		const char* const WebPort = "WEB服务端口";
-		const char* const DevCfgTime = "设备配置时间";
-		const char* const LoginState = "TCP注册状态";
-		const char* const UdpLoginState = "UDP注册状态";
-		const char* const LoginFailTime = "注册失败（小时）";
-		const char* const LogFileSize = "日志大小(Mb)";
-		const char* const LogLevel = "日志级别";
-		const char* const SoftVer = "软件版本";
+		const char* const AlarmSendDB = "alarm-sent-status-db"; //告警发送状态数据库
+		const char* const CsvEncoding = "csv-character-encoding";  //csv编码
+		const char* const CsvExpire = "csv-expire-period";  //csv过期时间
+		const char* const CsvMeasurementTime = "csv-measurement-period";  //csv上报周期
 
-		const char* const IsUart = "是否打开串口1/0";
-		const char* const UartName = "串口名";
-		const char* const BaudRate = "串口波特率";
-		const char* const DataBit = "串口数据位";
-		const char* const Parity = "串口校验位"; 
-		const char* const StopBit = "串口停止位";
-		const char* const SlaveID = "串口地址号";
+		const char* const SCIp = "door-server-ip";
+		const char* const SCPort = "door-server-port";
+		const char* const SCUdpPort = "door-trans-port";
+		const char* const SCProtocol = "door-trans-protocol";
+
+		const char* const AuthEnable = "enable-auth";             //身份认证
+		const char* const EnginState = "enable-enginnering-state";//启用工程状态（禁止上报告警）:
+		const char* const UpdateEnable = "enable-realtime-update"; //启动自动更新
+		const char* const SoapEnable = "enable-soap";               //soap功能
+
+		const char* const FlowControl = "flow-control";               //流控
+		const char* const RebootEnable = "fsu-auto-reboot-enable";  //自动重启开关	
+		const char* const RebootPeriod = "fsu-auto-reboot-period";  //自动重启周期（天）
+		const char* const RebootTime = "fsu-auto-reboot-time";      //重启具体时间
+		//const char* const fsuDeviceId = "fsu-device-id";
+		const char* const FsuId  = "fsu-id";             //FSU ID:
+		const char* const FsuEndPoint = "fsu-webservice-url";           //fsu 服务端URL http://192.168.1.168:8080/v1/services/newFSUService"
+
+		const char* const FtpUsr = "ftp-user";
+		const char* const FtpPasswd = "ftp-pass";
+		const char* const FtpType = "ftp-type";
+
+		//const char* const LoggerChannel = "logger-channel";
+		//const char* const LoggerCount = "logger-file-count";
+		const char* const LogFileSize = "logger-file-size";   // 日志大小(Mb);
+		const char* const LogLevel = "logger-level";        //"日志级别";
+
+		const char* const LoginPeriod = "re-login-period";           // 登陆重试周期（s）;
+		const char* const LoginHeart = "re-login-heart";           // 心跳（s）;
+		
+		const char* const Algorithm = "sc-login-algorithm";  //密码算法
+		const char* const Password = "sc-login-pass";     //SC Web服务登录密码
+		const char* const UserName = "sc-login-user";    //SC Web服务登录用户
+		const char* const SCEndPoint = "sc-webservice-url";           //sc 服务端URL http://192.168.1.184:9080/v1/services/newLSCService"
+
+		const char* const SendPeriod = "send-conf-period";          //配置上报周期(s)";
+		const char* const UpdateInterval = "update-fsuinfo-interval";   // FSU信息更新周期(秒):
+		
+		const char* const WebDevicedDB = "/userdata/db/web-api-device-props.sqlite";    //Web API设备厂家信息数据库:
+		const char* const WebQueueDepth = "web-api-event-queue-depth";    //	Web API请求队列深度
+		const char* const WebInterval = "web-api-event-time-interval";    //	Web API事件检查周期(秒):
+		const char* const WebHost = "web-api-host";    //Web API主机/IP:
+		const char* const WebHtdocs = "web-api-htdocs";    //Web API静态内容:
+		const char* const WebMimes = "web-api-mimes";    //	Web API MIME
+		const char* const WebPort = "web-api-port";    //	Web API端口
+		const char* const WebStorageDevice = "web-api-storage-device";    //Web API存储设备:
+		const char* const WebVersion = "web-api-version";    //WEBAPI 版本
+
+		const char* const SiteID = "site-id";            //站点编号
+		const char* const SiteName = "site-name";		 //站点名称
+		const char* const RoomID = "room-id";			 //机房编号
+		const char* const RoomName = "room-name";		 //机房名称
+		const char* const UartName = "serial-port";
+		const char* const BaudRate = "baud-rate";
+		const char* const DataBit = "data-bits";
+		const char* const Parity = "parity"; 
+		const char* const StopBit = "stop-bits";
+		const char* const SlaveID = "slave-id";
+
+
+		const char* const LoginState= "login-state"; //注册状态
+		const char* const DoorLoginState= "door-login-state"; //门禁系统注册状态
 		
 	}
 const char* const Request = "Request";

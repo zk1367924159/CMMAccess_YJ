@@ -13,7 +13,7 @@
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
 #include "CMMUart.h"
 #include "CMMAccess.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 
 #define BUFFER_SIZE             1024
 
@@ -45,12 +45,7 @@ namespace CMM
     CMMUart::CMMUart() : m_buffer(new uint8_t[BUFFER_SIZE])
     {
         m_running = false;
-        m_uartname = CMMConfig::instance()->GetParam(param::UartName, "BottomBoard_Uart6").c_str();
-        m_baudrate = CMMConfig::instance()->GetParam(param::BaudRate, "9600").convertInt();
-        m_dataBits = CMMConfig::instance()->GetParam(param::DataBit, "8").convertInt();
-        m_parity = CMMConfig::instance()->GetParam(param::Parity, "N").c_str();
-        m_stopBits = CMMConfig::instance()->GetParam(param::StopBit, "1").convertInt();
-        m_slaveID = CMMConfig::instance()->GetParam(param::SlaveID, "1").convertInt();
+       
     }
 
     CMMUart::~CMMUart()
@@ -58,17 +53,17 @@ namespace CMM
 
     }
 
-    void CMMUart::Start()
-    {
-        if (!m_running)
-        {
-            m_running = true;
+	void CMMUart::Start()
+	{
+		if (!m_running)
+		{
+			m_running = true;
 
-            m_thread = new Poco::Thread;
-            m_thread->setName("CMMUart");
-            m_thread->start(*this);
-        }
-    }
+			m_thread = new Poco::Thread;
+			m_thread->setName("CMMUart");
+			m_thread->start(*this);
+		}
+	}
 
     void CMMUart::Stop()
     {
@@ -81,7 +76,14 @@ namespace CMM
     void CMMUart::run()
     {
         int     length = 0;
-
+		m_uartname = CMMParam::instance()->GetParam(param::UartName, "COM5").c_str();
+		m_baudrate = CMMParam::instance()->GetParam(param::BaudRate, "9600").convertInt();
+		m_dataBits = CMMParam::instance()->GetParam(param::DataBit, "8").convertInt();
+		m_parity = CMMParam::instance()->GetParam(param::Parity, "N").c_str();
+		m_stopBits = CMMParam::instance()->GetParam(param::StopBit, "1").convertInt();
+		m_slaveID = CMMParam::instance()->GetParam(param::SlaveID, "1").convertInt();
+		m_uartname = getUartName(m_uartname.c_str());
+		setUartParam();
         while (m_running)
         {
             Poco::SharedPtr<char>   recvBuffer;
@@ -146,18 +148,23 @@ namespace CMM
         }
     }
 
-    int CMMUart::getUartID()
+    std::string CMMUart::getUartName(CData uartname)
     {
-        int uartID = 1;
-        if (!m_uartname.empty())
+		if (uartname.empty())
+		{
+			m_uartID = 5;
+			return "BottomBoard_Uart6";
+		}
+        CData uartID = uartname.c_str();
+        if (!uartname.empty())
         {
-            std::string numberStr;
+            CData numberStr;
             // 从字符串末尾向前读取数字字符
-            for (int i = m_uartname.length() - 1; i >= 0; --i)
+            for (int i = uartname.length() - 1; i >= 0; --i)
             {
-                if (std::isdigit(m_uartname[i]))
+                if (std::isdigit(uartname[i]))
                 {
-                    numberStr = m_uartname[i] + numberStr; // 将数字字符添加到前缀
+                    numberStr = CData(uartname[i]) + numberStr; // 将数字字符添加到前缀
                 }
                 else
                 {
@@ -170,13 +177,20 @@ namespace CMM
                     break;
                 }
             }
-
             if (!numberStr.empty())
             {
-                uartID = std::stoi(numberStr)-1; // 将字符串转换为整数
+				if (uartname.find("BottomBoard_Uart") == std::string::npos)
+				{
+					uartID = "BottomBoard_Uart" + CData(numberStr.convertInt()) + 1;
+					m_uartID = numberStr.convertInt();
+				}
+				else
+				{
+					m_uartID = numberStr.convertInt() - 1;
+				}
             }
         }
-        return uartID;
+        return uartID.c_str();
     }
 
     void CMMUart::setUartName(const std::string& uartname)
@@ -185,7 +199,7 @@ namespace CMM
 
         if (uartname != m_uartname)
         {
-            m_uartname = uartname;
+			m_uartname = getUartName(uartname.c_str());
             setUartParam();
         }
     }

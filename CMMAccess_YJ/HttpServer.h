@@ -66,16 +66,16 @@ class CHTTPRequestHandlerFactory : public HTTPRequestHandlerFactory
 		std::map<CData, HTTPRequestHandler*> m_HttpRequestHandlerMap;
 };
 
-class CHttpServer : public Poco::Runnable
+class HttpServer : public Poco::Runnable
 {
 	public:
-		CHttpServer();
-		~CHttpServer();
-		int Start(int port, CData endpoint);
+		HttpServer();
+		~HttpServer();
+		int Start(CData endpoint);
 		int Stop();
 		void DeleteConnection(CData clientIp, int port);
 		static void DisConnection();
-		bool ListenPortChange(int nPort);
+		bool ListenPortChange(CData endpoint);
 		virtual void run();
 	public:
 		static bool m_bConnection;

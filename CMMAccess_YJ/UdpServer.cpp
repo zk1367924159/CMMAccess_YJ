@@ -120,7 +120,7 @@ namespace CMM
 				}
 				std::vector<uint8_t> outBuffer;
 				outBuffer.reserve(recvBytes);
-				if (!CTransData::UnPackageRecvData(recvBuffer, recvBytes, outBuffer))
+				if (!TransData::UnPackageRecvData(recvBuffer, recvBytes, outBuffer))
 				{
 					std::string response = "UnPackageRecvData failed.";
 					//m_ServerSocket.sendTo(response.c_str(), response.length(), senderAddr);

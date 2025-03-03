@@ -17,17 +17,6 @@
 
 #define  CMM_DEVICE_JSON_FILE_PATH "/appdata/config/CMMAccess_YJ_device.json"
 namespace CMM{
-	CMMDeviceConfig * CMMDeviceConfig::_instance = NULL;
-
-	CMMDeviceConfig* CMMDeviceConfig::instance()
-	{
-		if(_instance == NULL){
-			_instance = new CMMDeviceConfig();
-		}
-		return _instance;
-	}
-
-
 	std::vector<int> CMMDeviceConfig::vStringSplit(const  CData& s, const std::string& delim)
 	{
 	  //  std::vector<std::string> elems;

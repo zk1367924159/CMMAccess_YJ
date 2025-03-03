@@ -21,12 +21,12 @@
 namespace CMM
 {
 
-	class CTransData
+	class TransData
 	{
 
 	public:
-		CTransData();
-		~CTransData();
+		TransData();
+		~TransData();
 		/*
 		* 发送xml数据打包
 		*/

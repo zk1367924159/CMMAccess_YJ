@@ -16,26 +16,22 @@ using namespace Poco::Net;
 namespace CMM
 {
 
-
-
-
-
-	CHttpClient::CHttpClient()
+	HttpClient::HttpClient()
 	{
 
 	}
 
-	CHttpClient::~CHttpClient()
+	HttpClient::~HttpClient()
 	{
 
 	}
 
-	void CHttpClient::Start()
+	void HttpClient::Start()
 	{
 		//m_pUser = url;
 	}
 
-	int CHttpClient::SendXmlData(const char* url,CData xmlData, CData authHeader, HTTPResponse& response, CData& responseData)
+	int HttpClient::SendXmlData(const char* url,CData xmlData, CData authHeader, HTTPResponse& response, CData& responseData)
 	{
 		Poco::URI uri(url);
 		HTTPClientSession session(uri.getHost(), uri.getPort());
@@ -106,7 +102,7 @@ namespace CMM
 		return -2;
 	}
 
-	CData CHttpClient::GetTokenFromHeader(const HTTPResponse& response)
+	CData HttpClient::GetTokenFromHeader(const HTTPResponse& response)
 	{
 		// 查找Authorization头并解析Bearer Token
 		auto it = response.find("Authorization");

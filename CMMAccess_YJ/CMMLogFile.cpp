@@ -2,7 +2,7 @@
 #include "Poco/File.h"
 #include "Poco/FileStream.h"
 #include "Poco/DateTime.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 namespace CMM
 {
 	CMMLogFile::CMMLogFile()
@@ -45,7 +45,7 @@ namespace CMM
 			m_curIndex = 1;
 		}
 		char fileName[64] ={0};
-		sprintf(fileName, "%s/%s_alarm%02d.log", m_curDir.c_str(),CMMConfig::instance()->GetFsuId().c_str(),m_curIndex);
+		sprintf(fileName, "%s/%s_alarm%02d.log", m_curDir.c_str(),CMMParam::instance()->m_FsuId.c_str(),m_curIndex);
 		Poco::File dir(m_curDir.c_str()) ;
 		if(dir.exists() == false)
 		{
@@ -61,7 +61,7 @@ namespace CMM
 		if((file.getSize()+cmmAlarmStr.length()) >= m_perFileSize)
 		{
 			m_curIndex++;
-			sprintf(fileName, "%s/%s_alarm%02d.log", m_curDir.c_str(),CMMConfig::instance()->GetFsuId().c_str(),m_curIndex);
+			sprintf(fileName, "%s/%s_alarm%02d.log", m_curDir.c_str(),CMMParam::instance()->m_FsuId.c_str(),m_curIndex);
 		}
 		std::string fileStr = fileName;
 		Poco::FileOutputStream fos(fileStr, std::ios::out|std::ios::app);

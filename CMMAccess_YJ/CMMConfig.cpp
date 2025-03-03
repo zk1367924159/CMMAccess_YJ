@@ -1,17 +1,16 @@
-//canyon 2019 0902
 
 #include <iomanip>  
 #include <fstream>  
 #include <algorithm>  
-#include "CMMConfig.h"
+
 #include "CMMDeviceConfig.h"
 #include "CLog.h"
-#include "CMMMeteTranslate.h"
+#include "CMMConfig.h"
+#include "CMMParam.h"
 #include "CMMProtocolEncode.h"
-#include "CMMProtocolDecode.h"
 #include "SysCommon.h"
 #include "CMMCommonStruct.h"
-#include "CMMAccess.h"
+#include "CMMMeteTranslate.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/DateTimeFormatter.h"  
 #include "Poco/DateTime.h" 
@@ -19,130 +18,26 @@
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
 #include "../../ExtAppIpc/ExtAppIpcStruct.h"
 
+
 #define  CMM_DEVICE_CONFIG  "/Config/devices"
 //#define  CMM_DEVICE_CONFIG  "/userdata/Config/devices"
 #define  CMM_DEVICE_CONFIG_FILE_HEADER "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Devices></Devices>"
 #define  CMM_TEMPLATES_XML "/appdata/config/templates.xml"
 namespace CMM{
+
 	CMMConfig * CMMConfig::_instance = NULL;
-
-	CMMConfig* CMMConfig::instance()
-	{
-		if(_instance == NULL)
-		{
-			_instance = new CMMConfig();
-		}
-		return _instance;
-	}
-
-
-	std::vector<int> CMMConfig::vStringSplit(const  CData& s, const std::string& delim)
-	{
-	  //  std::vector<std::string> elems;
-		std::vector<int> elems;
-		size_t pos = 0;
-		size_t len = s.length();
-		size_t delim_len = delim.length();
-		if (delim_len == 0) return elems;
-		while (pos < len)
-		{
-			int find_pos = s.find(delim, (int)pos);
-			if (find_pos != CDATA_NPOS)
-			{
-				elems.push_back(s.substr(pos, len - pos).convertInt());
-				break;
-			}
-			elems.push_back(s.substr(pos, find_pos - pos).convertInt());
-			pos = find_pos + delim_len;
-		}
-		return elems;
-	}
-	
-	void CMMConfig::SetIgnoreAlarmLevel(CData val)
-	{
-		m_IgnoreAlarmLevel = val;
-		m_IgnoreAlarmLevelVec.clear();
-		if(m_IgnoreAlarmLevel.length()>0)
-		{
-			m_IgnoreAlarmLevelVec=vStringSplit(m_IgnoreAlarmLevel);
-		}
-	}
-	
-	CData CMMConfig::GetParam(CData key, CData defVal)
-	{
-		CData val = APPAPI::GetExtAppParam(key);
-		if (val.size()>0) return val;
-		return defVal;
-	}
-
-	int CMMConfig::SetParam(CData key, CData val)
-	{
-		return APPAPI::SaveExtAppParam(key, val);
-	}
-
-	int CMMConfig::Init()
-	{
-
-		m_fsuId = GetParam(CMM::param::FsuId, "");
-		//m_FsuCode = GetParam(CTower::param::FsuCode, "");
-		m_fsuIp = GetParam(CMM::param::FsuIp, "");
-		m_fsuPort = GetParam(CMM::param::FsuPort, "");
-		m_fsuConfigTime = GetParam(CMM::param::DevCfgTime, "");
-
-		m_userName = GetParam(CMM::param::UserName, "");
-		m_password = GetParam(CMM::param::Password, "");
-		m_ftpUsr = GetParam(CMM::param::FtpUsr, "");
-		m_ftpPasswd = GetParam(CMM::param::FtpPasswd, "");
-	
-		m_scIp =  GetParam(CMM::param::SCIp, "");
-		m_scPort =  GetParam(CMM::param::SCPort, "");
-	    m_scUdpIp = GetParam(CMM::param::SCUdpIp, "");
-		m_scUdpPort = GetParam(CMM::param::SCUdpPort, "");
-		m_scIpRoute =  GetParam(CMM::param::SCIpRoute, "");
-
-		m_SiteID = GetParam(CMM::param::SiteID, "");
-		m_SiteName = GetParam(CMM::param::SiteName, "");
-		m_RoomID = GetParam(CMM::param::RoomID, "");
-		m_RoomName = GetParam(CMM::param::RoomName, "");
-	
-		m_IgnoreAlarmLevel = GetParam(CMM::param::IgnoreAlarmLevel, "");
-		m_IgnoreAlarmLevelVec.clear();
-		if(m_IgnoreAlarmLevel.length()>0)
-		{
-			m_IgnoreAlarmLevelVec=vStringSplit(m_IgnoreAlarmLevel);
-		}
-		m_fsuVersion = GetParam(CMM::param::SoftVer, "");
-		CMMAccess::instance()->AddLinuxSysUser(m_ftpUsr, "", "/");
-		CMMAccess::instance()->ModifyLinuxSysPasswd(m_ftpUsr, m_ftpPasswd);
-
-		ReadCMMConfigData();
-		//m_fsuId =  ISFIT::Config::getString(CMM::param::FsuId, "MSJW201605170001");
-		m_DevCfgFileName = CMM_DEVICE_CONFIG; 
-		m_DevCfgFileName += "_"+m_fsuId + ".xml";
-		LogInfo("dev cfg file name"<<m_DevCfgFileName.c_str());
-
-		//启用或重启都应该重新读列表
-		CreateConfigFile();		
-		/*LogInfo("++++++++++++++++++++++++++++++++++");
-		ISFIT::ShareFile::printMeterFileInfo("");
-		LogInfo("++++++++++++++++++++++++++++++++++");*/
-		return 0;
-	}
-
 
 	std::vector<std::string> extractValues(const std::string& input) 
 	{
 		std::vector<std::string> values;
 		std::istringstream iss(input);
 		std::string value;
-
 		while (std::getline(iss, value, ',')) 
 		{
 			// 移除可能的空白字符（如果有的话）  
 			value.erase(std::remove_if(value.begin(), value.end(), isspace), value.end());
 			values.push_back(value);
 		}
-
 		return values;
 	}
 
@@ -158,6 +53,28 @@ namespace CMM{
 			}
 		}
 		return true;
+	}
+
+	CMMConfig* CMMConfig::instance()
+	{
+		if(_instance == NULL)
+		{
+			_instance = new CMMConfig();
+		}
+		return _instance;
+	}
+
+	int CMMConfig::Init()
+	{
+		ReadCMMConfigData();
+		//m_fsuId =  ISFIT::Config::getString(CMM::param::FsuId, "MSJW201605170001");
+		m_DevCfgFileName = CMM_DEVICE_CONFIG;
+		m_DevCfgFileName += "_" + CMMParam::instance()->m_FsuId + ".xml";
+		LogInfo("dev cfg file name" << m_DevCfgFileName.c_str());
+		//启用或重启都应该重新读列表
+		CreateConfigFile();
+		m_pDeviceConfig->Init();
+		return 0;
 	}
 
 	void CMMConfig::ReadCMMConfigData()
@@ -336,7 +253,6 @@ namespace CMM{
 		m_bUpdateBak = true;
 	}
 
-	//canyon
 	void CMMConfig::ReadDevCfgFromObj(std::list <CData>& devIdList)
 	{
 		m_devCfg.clear();
@@ -358,8 +274,9 @@ namespace CMM{
 			dev.DeviceType = aliasDevId.substr(0,2);
 			dev.DeviceSubType = aliasDevId.substr(2,2);
 			LogInfo("--------aliasDevId :" << aliasDevId << " deviceID:" << devId);
-			auto iter = CMMDeviceConfig::instance()->GetDevices().find(devId);
-			if (iter != CMMDeviceConfig::instance()->GetDevices().end())
+			std::map<CData, TDeviceInfo> pMap = m_pDeviceConfig->GetDevices();
+			auto iter = pMap.find(devId);
+			if (iter != pMap.end())
 			{
 				TDeviceInfo& sinfo = iter->second;
 				dev.Brand = sinfo.Brand;
@@ -370,10 +287,10 @@ namespace CMM{
 				dev.BeginRunTime = sinfo.BeginRunTime;
 				dev.DeviceSubType = sinfo.DeviceSubType;
 			}
-			dev.SiteID = m_SiteID;
-			dev.SiteName = m_SiteName;
-			dev.RoomID = m_RoomID;
-			dev.RoomName = m_RoomName;
+			dev.SiteID = CMMParam::instance()->m_SiteID;
+			dev.SiteName =  CMMParam::instance()->m_SiteName;
+			dev.RoomID =  CMMParam::instance()->m_RoomID;
+			dev.RoomName =  CMMParam::instance()->m_RoomName;
 			std::set<CData> attrSet;
 			attrSet.insert("meterId");
 			attrSet.insert("meterType");
@@ -397,7 +314,7 @@ namespace CMM{
 						threshold = attr["threshold"].convertDouble();
 					}	
 					TSignal signal;
-					signal.Type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+					signal.Type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 					int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 					if (nType < 5)
 					{
@@ -432,7 +349,6 @@ namespace CMM{
 		}
 	}
 	
-
 	int CMMConfig::GetDevMetes(TDevConf& cfg)
 	{
 		ISFIT::SmartLock lock(m_devCfgMutex);
@@ -472,7 +388,6 @@ namespace CMM{
 		m_doc.SaveFile(m_DevCfgFileName.c_str());
 	}
 
-
 	int CMMConfig::GetDev(CData devId, TDevConf& cfg)
 	{
 		if (m_devCfg.find(devId) == m_devCfg.end())
@@ -483,8 +398,6 @@ namespace CMM{
 		return 0;
 	}
 
-
-	//canyon rebuild
 	int CMMConfig::SetDevCfg(std::map<CData, TDevConf>& devMap, std::list<CData>& scucessList, std::list<CData>& failList )
 	{
 		bool bOK=false;
@@ -731,7 +644,6 @@ namespace CMM{
 		return 0;
 	}
 
-
 	int CMMConfig::SetMeteThreshold(std::map<CData, CData>& param, TThreshold& theshold, int nType)
 	{
 		theshold.Threshold = param["threshold"].convertDouble();
@@ -739,122 +651,6 @@ namespace CMM{
 		theshold.AlarmLevel = param["alarmLevel"].convertInt();
 		theshold.Type = nType;
 		return 0;
-	}
-
-	CData CMMConfig::GetFsuId()
-	{
-		return m_fsuId;
-	}
-
-	void CMMConfig::SetFsuId( CData fsuId )
-	{
-		m_fsuId = fsuId;
-	}
-
-	CData CMMConfig::GetUserName()
-	{
-		return m_userName;
-	}
-
-	void CMMConfig::SetUserName( CData userName,bool saveDb)
-	{
-		m_userName = userName;
-		if (saveDb)
-			SetParam(CMM::param::UserName, userName);
-	}
-
-
-	CData CMMConfig::GetPassword()
-	{
-		return m_password;
-	}
-
-	void CMMConfig::SetPassword( CData password, bool saveDb)
-	{
-		m_password = password;
-		if (saveDb)
-			SetParam(CMM::param::Password, password);
-	}
-
-	void CMMConfig::SetFsuPort( CData port )
-	{
-		m_fsuPort = port;
-	}
-
-	void CMMConfig::SetUdpPort(CData port)
-	{
-		m_udpPort = port;
-	}
-
-	CData CMMConfig::GetFsuPort()
-	{
-		return m_fsuPort;
-	}
-	
-	int CMMConfig::SetFtpUsr(CData usr, bool saveDb)
-	{
-		if (m_ftpUsr == usr)
-		{
-			LogInfo("CMMConfig::SetFtpUsr usr:"<<usr<<" no changes, no need save");
-			return 0;
-		}
-		
-		m_ftpUsr = usr;
-		if (saveDb)
-		{
-			SetParam(CMM::param::FtpUsr, usr);
-		}
-		else
-		{
-			CMMAccess::instance()->AddLinuxSysUser(m_ftpUsr, "", "/");
-			//CMMAccess::instance().ModifyLinuxSysPasswd(m_ftpUsr, m_ftpPasswd);
-		}
-
-		return 0;	// DAHAI
-	}
-
-	int CMMConfig::SetFtpPasswd( CData passwd , bool saveDb)
-	{
-		if (m_ftpPasswd == passwd)
-		{
-			LogInfo("CMMConfig::SetFtpPasswd passwd:"<<passwd<<" no changes, no need save");
-			return 0;
-		}
-		
-		m_ftpPasswd = passwd;
-		if (saveDb)
-		{
-			return SetParam(CMM::param::FtpPasswd, passwd);
-		}
-		else
-		{
-			//CMMAccess::instance().AddLinuxSysUser(m_ftpUsr, "", "/");
-			int ret=CMMAccess::instance()->ModifyLinuxSysPasswd(m_ftpUsr, m_ftpPasswd);
-			return ret;
-		}
-	}
-
-	CData CMMConfig::GetFsuIp()
-	{
-		CData ip;
-		CData content = ISFIT::Shell("ifconfig eth0");
-		CData pattern = "inet addr:";
-		int startPos = content.find(pattern);
-		if (CDATA_NPOS != startPos)
-		{
-			int endPos =  content.find(" ", startPos+pattern.size());
-			if (CDATA_NPOS != endPos)
-			{
-				ip = content.substring(startPos+pattern.size(), endPos);
-			}
-		}
-		if (ip.size() > 0) return ip;
-		return m_fsuIp;
-	}
-
-	void CMMConfig::SetFsuIp(CData ip )
-	{
-		m_fsuIp = ip;
 	}
 
 	void CMMConfig::addAcceptIP(CData familyType, std::list<CData>& IPList)
@@ -907,7 +703,7 @@ namespace CMM{
 		std::string formattedTimestamp = ss.str();
 		timestamp = formattedTimestamp;
 		measureFile += "PM_";
-		measureFile += m_fsuId + "_";
+		measureFile += CMMParam::instance()->m_FsuId + "_";
 		measureFile += formattedTimestamp + ".csv";
 		return measureFile;
 	}
@@ -915,13 +711,11 @@ namespace CMM{
 	bool CMMConfig::WriteMeasurefile()
 	{
 		
-		if (m_fsuId.empty() || m_fsuId.length() < 1)
+		if (CMMParam::instance()->m_FsuId.empty() || CMMParam::instance()->m_FsuId.length() < 1)
 		{
 			//LogError("3333333333333");
 			return false;
 		}
-			
-		LogInfo("WriteMeasurefile begin:" << m_fsuId.c_str());
 		UpdateCfgFile();
 		std::map<CData, std::list<TSemaphore>> reqDevMap;
 		GetSemaphoreConf(reqDevMap);
@@ -992,6 +786,13 @@ namespace CMM{
 		}
 		return true;
 	}
+
+	Poco::SharedPtr<CMMDeviceConfig> CMMConfig::GetDeviceConfig()
+	{
+		return m_pDeviceConfig;
+	}
+	
+
 }
 
 

@@ -180,8 +180,8 @@ namespace CMM
 		CData method = request.GetMethod();
 		CData fusId = info.GetSubElement("FSUID").GetElementText();
 		int len=strlen(fusId.c_str());
-		int len2=strlen(CMMConfig::instance()->GetFsuId().c_str());
-		if(((fusId!=CMMConfig::instance()->GetFsuId())
+		int len2=strlen(CMMParam::instance()->m_FsuId.c_str());
+		if(((fusId != CMMParam::instance()->m_FsuId)
 			&&(method.compareNoCase(CMM::method::SET_LOGININFO) !=0)
 			&&(method.compareNoCase(CMM::method::TIME_CHECK)!=0)) || ((len==0&&len2==0)&&(method.compareNoCase(CMM::method::SET_LOGININFO) !=0)&&(method.compareNoCase(CMM::method::TIME_CHECK)!=0)))
 		{			
@@ -329,7 +329,7 @@ namespace CMM
 						int len=meterId.length();
 						rspSemaphore.ID =meterId.substr(0,len-3);
 						rspSemaphore.SignalNumber = meterId.substr(len-3,3).convertInt();
-						int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 						//int alarmLevel = attr["alarmLevel"].convertInt();
 						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 						if (nType < 5)
@@ -386,7 +386,7 @@ namespace CMM
 							TSemaphore rspSemaphore;
 							rspSemaphore.ID = reqMeterId.ID;
 							rspSemaphore.SignalNumber = signalNum;
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)
@@ -431,7 +431,7 @@ namespace CMM
 							int len=meterId.length();
 							rspSemaphore.ID =meterId.substr(0,len-3);
 							rspSemaphore.SignalNumber = meterId.substr(len-3,3).convertInt();
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)
@@ -620,7 +620,7 @@ namespace CMM
 						rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();	
 						rspMeter.NMAlarmID = CMMConfig::instance()->NMAlarmID(rspMeter.ID);
 
-						int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 						//int alarmLevel = attr["alarmLevel"].convertInt();
 						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 						if (nType < 5)
@@ -680,7 +680,7 @@ namespace CMM
 							rspMeter.ID = reqMeterId.ID;
 							rspMeter.SignalNumber = signalNum;
 							rspMeter.NMAlarmID= CMMConfig::instance()->NMAlarmID(rspMeter.ID);;
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)
@@ -727,7 +727,7 @@ namespace CMM
 							rspMeter.ID =meterId.substr(0,len-3);
 							rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();						
 							rspMeter.NMAlarmID = CMMConfig::instance()->NMAlarmID(rspMeter.ID);
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)
@@ -835,8 +835,8 @@ namespace CMM
 		if(ret==0)
 		{
 			//FSUUTIL::SetFtpUser(user, password);
-			CMMConfig::instance()->SetFtpUsr(user, true);
-			CMMConfig::instance()->SetFtpPasswd(password, true);
+			CMMParam::instance()->UpdateParam(CMM::param::FtpUsr, user);
+			CMMParam::instance()->UpdateParam(CMM::param::FtpPasswd, password);
 			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_FTP_ACK);
 		}
 		else
@@ -860,8 +860,8 @@ namespace CMM
 		}
 		else
 		{
-			CMMConfig::instance()->SetUserName(user,true);
-			CMMConfig::instance()->SetPassword(password,true);
+			CMMParam::instance()->UpdateParam(CMM::param::UserName, user);
+			CMMParam::instance()->UpdateParam(CMM::param::Password, password);
 			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_LOGININFO_ACK);
 		}
 		response.SetResponseXml(rsp);
@@ -930,7 +930,7 @@ namespace CMM
 						int len=meterId.length();
 						rspMeter.ID =meterId.substr(0,len-3);
 						rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();
-						int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 						//int alarmLevel = attr["alarmLevel"].convertInt();
 						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 						if (nType < 5)
@@ -1005,7 +1005,7 @@ namespace CMM
 							TSignal rspMeter;
 							rspMeter.ID = reqMeterId.ID;
 							rspMeter.SignalNumber = signalNum;
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)
@@ -1050,7 +1050,7 @@ namespace CMM
 							int len=meterId.length();
 							rspMeter.ID =meterId.substr(0,len-3);
 							rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();		
-							int type = CMeteTranslate::Instance()->ConvertToCmmMeterType(attr["meterType"]);
+							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
 							//int alarmLevel = attr["alarmLevel"].convertInt();
 							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
 							if (nType < 5)

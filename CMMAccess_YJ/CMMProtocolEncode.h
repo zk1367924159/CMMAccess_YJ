@@ -3,7 +3,7 @@
 #include "Data.h"
 #include "NetComm/CXmlElement.h"
 #include "CMMCommonStruct.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 #include "CLog.h"
 namespace CMM
 {
@@ -49,7 +49,7 @@ namespace CMM
 				ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
 				info.AddSubElement("Result").SetElementText(result);
 				info.AddSubElement("FailureCause").SetElementText(failedCause.c_str());
-				info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+				info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 				ISFIT::CXmlElement deviceList = info.AddSubElement("DeviceList");
 				//if(result == CMM::SUCCESS)
 				{
@@ -85,7 +85,7 @@ namespace CMM
 			}
 			catch (Poco::Exception& ex)
 			{
-				LogError("build login msg failed :"<<ex.message().c_str());
+				LogError("build login msg failed :"<< ex.message().c_str());
 				return "";
 			}
 			return doc.ToString();

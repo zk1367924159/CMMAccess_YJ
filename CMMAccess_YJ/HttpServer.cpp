@@ -244,13 +244,13 @@ namespace CMM
 		else
 		{
 			LogNotice("Failed to send response.");
-			CHttpServer::DisConnection();
+			HttpServer::DisConnection();
 		}
 	}
 
-	bool CHttpServer::m_bConnection = true;
+	bool HttpServer::m_bConnection = true;
 
-	CHttpServer::CHttpServer()
+	HttpServer::HttpServer()
 	{
 		m_bStop = true;
 		m_listenPort = -1;
@@ -258,25 +258,29 @@ namespace CMM
 	}
 
 
-	CHttpServer::~CHttpServer()
+	HttpServer::~HttpServer()
 	{
 		Stop();
 	}
 
-	bool CHttpServer::ListenPortChange(int nPort)
+	bool HttpServer::ListenPortChange(CData endpoint)
 	{
-		if (m_listenPort != nPort)
+		Poco::URI uri(endpoint.c_str());
+		int port = uri.getPort();
+		if (m_listenPort != port)
 		{
-			m_listenPort = nPort;
+			m_listenPort = port;
 			m_bConnection = false;
 			return true;
 		}
 		return false;
 	}
 
-	int CHttpServer::Start(int port, CData endpoint)
+	int HttpServer::Start(CData endpoint)
 	{
-		if (port == -1 || endpoint.empty())
+		Poco::URI uri(endpoint.c_str());
+		int port = uri.getPort();
+		if (port < 1 )
 		{
 			LogError("cmm service endpoint an service port must be setted");
 			return -1;
@@ -294,7 +298,7 @@ namespace CMM
 		return 0;
 	}
 
-	void CHttpServer::DeleteConnection(CData clientIp, int port)
+	void HttpServer::DeleteConnection(CData clientIp, int port)
 	{
 		CData key = clientIp;
 		key += ":";
@@ -302,7 +306,7 @@ namespace CMM
 		m_pFactory->DelHttpServerConnection(key);
 	}
 
-	int CHttpServer::Stop()
+	int HttpServer::Stop()
 	{
 		if (m_bStop)
 		{
@@ -328,7 +332,7 @@ namespace CMM
 		return 0;
 	}
 
-	void CHttpServer::run()
+	void HttpServer::run()
 	{
 		// 绑定端口并开始监听
 		m_ServerSocket = ServerSocket(m_listenPort);
@@ -380,7 +384,7 @@ namespace CMM
 		Stop();
 	}
 
-	void CHttpServer::DisConnection()
+	void HttpServer::DisConnection()
 	{
 		m_bConnection = false;
 	}

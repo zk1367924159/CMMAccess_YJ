@@ -3,6 +3,7 @@
 
 #include "CMMAccess.h"
 #include "CMMConfig.h"
+#include "CMMParam.h"
 #include "CMMDeviceConfig.h"
 #include "CMMCommonStruct.h"
 #include "SysCommon.h"
@@ -45,7 +46,6 @@ namespace CMM{
 	{
 		m_bStart = false;
 		m_bLoginOK = false;
-		m_heartBeatTime = 300;
 		m_registerStatus = CMM_REGISTER_FAILED;
 		m_udpRegisterStatus = CMM_REGISTER_FAILED;
 		m_RightLevel = -1;
@@ -53,11 +53,11 @@ namespace CMM{
 		m_nRetry = 0;
 		m_bIsUart = 0;
 
-		m_webServer = new CWebServer();
-		m_udpServer = new CUdpServer();
-		m_udpClient = new CUdpClient();
-		m_client = new CHttpClient();
-		m_server = new CHttpServer();
+		m_doorServer = new DoorServerManger();
+		m_doorClient = new DoorClient();
+		m_webServer = new WebServer();
+		m_client = new HttpClient();
+		m_server = new HttpServer();
 		m_uartService = new CMMUart();
 	}
 	
@@ -296,11 +296,6 @@ namespace CMM{
 		return ret;
 	}
 
-	void CMMAccess::SaveDataLog(std::map<CData, CData>& msg)
-	{
-		m_datalog.Save(msg);
-	}
-	
 	void CMMAccess::SetLoginState(bool isLoginOk)
 	{
 		if (!isLoginOk)
@@ -311,13 +306,14 @@ namespace CMM{
 		{
 			m_registerStatus = CMM_REGISTER_SUCCESS;
 		}
-		CData state = isLoginOk ? "成功" : "失败";
-		CData oldState = CMMConfig::instance()->GetParam(CMM::param::LoginState, "");
+		CData state = isLoginOk ? "注册成功" : "未注册";
+		CData oldState = CMMParam::instance()->GetParam(CMM::param::LoginState, "");
 		if (oldState != state)
 		{
-			CMMConfig::instance()->SetParam(CMM::param::LoginState, state);
+			CMMParam::instance()->SetParam(CMM::param::LoginState, state);
 		}
-		CData newState = CMMConfig::instance()->GetParam(CMM::param::LoginState, "");
+		CData val = isLoginOk ? "0" : "1";
+		APPAPI::SetMeterVal(CData("215001"), CData("138123001"), "msj",val);
 	}
 
 	void CMMAccess::SetUdpLoginState(bool isLoginOk)
@@ -330,11 +326,11 @@ namespace CMM{
 		{
 			m_udpRegisterStatus = CMM_REGISTER_SUCCESS;
 		}
-		CData state = isLoginOk ? "成功" : "失败";
-		CData oldState = CMMConfig::instance()->GetParam(CMM::param::UdpLoginState, "");
+		CData state = isLoginOk ? "注册成功" : "未注册";
+		CData oldState = CMMParam::instance()->GetParam(CMM::param::DoorLoginState, "");
 		if (oldState != state)
 		{
-			CMMConfig::instance()->SetParam(CMM::param::UdpLoginState, state);
+			CMMParam::instance()->SetParam(CMM::param::DoorLoginState, state);
 		}
 	}
 
@@ -392,18 +388,16 @@ namespace CMM{
 			std::list<std::map<CData,CData> > infoList;
 			ret = APPAPI::GetMeterInfo(devID, "msj", attrSet, infoList, 10000);
 			LogInfo("============GetMeterInfo" << infoList.size() << " ret:" << ret);
-			for (auto mit=infoList.begin(); mit!=infoList.end(); mit++)
-			{		
-				std::map<CData,CData>& attr = *mit;
-				CData meterId=attr["meterId"];
-				for(auto it=attr.begin(); it!=attr.end(); it++)
+			for (auto mit = infoList.begin(); mit != infoList.end(); mit++)
+			{
+				std::map<CData, CData>& attr = *mit;
+				CData meterId = attr["meterId"];
+				for (auto it = attr.begin(); it != attr.end(); it++)
 				{
 					if (meterId == "001018001")
-						LogInfo("==key:"<<it->first<<" val:"<<it->second);
+						LogInfo("==key:" << it->first << " val:" << it->second);
 				}
 			}
-
-			CMMConfig::instance()->UpdateCfgFile();
 			Poco::Thread::sleep(3000);
 		}
 		
@@ -435,19 +429,8 @@ namespace CMM{
 
 	void CMMAccess::UpdateModuleInfo()
 	{
-		CData fsuId = CMMConfig::instance()->GetFsuId();
-		CData fsuIp = CMMConfig::instance()->GetFsuIp();
-
-		APPAPI::SetMeterVal(CData("215001"), CData("138131001"), "msj", fsuIp);
+		CData fsuId = CMMParam::instance()->m_FsuId;
 		APPAPI::SetMeterVal(CData("215001"), CData("138127001"), "msj", fsuId);
-		/*APPAPI::SetMeterVal(CData("215001"), CData("004001001"), "msj", "1");
-		APPAPI::SetMeterVal(CData("215001"), CData("004002001"), "msj", "0");
-		APPAPI::SetMeterVal(CData("215001"), CData("004301001"), "msj", "20");
-		APPAPI::SetMeterVal(CData("215001"), CData("004304001"), "msj", "40");
-		APPAPI::SetMeterVal(CData("215001"), CData("005101001"), "msj", "0");
-		APPAPI::SetMeterVal(CData("215001"), CData("006201001"), "msj", "50");
-		APPAPI::SetMeterVal(CData("215001"), CData("007401001"), "msj", "1");*/
-
 	}
 
 	void threadFunction2(void* arg)
@@ -466,10 +449,10 @@ namespace CMM{
 			{
 				Poco::Timestamp now;
 				time_t diff = now.epochTime() - m_lastMsgTimeBak.epochTime();
-				if (diff >= m_registerTime || isFirst)  //发送心跳
+				if (diff >= m_registerTime  || isFirst)  //发送心跳
 				{
 					isFirst = false;
-					if (0 == m_udpClient->SendHeart(m_scUdpPoint.c_str()))
+					if (0 == m_doorClient->SendHeart(m_scUdpPoint.c_str(),CMMParam::instance()->m_ScProtocol))
 					{
 						m_lastMsgTimeBak.update();
 						SetUdpLoginState(true);
@@ -480,8 +463,9 @@ namespace CMM{
 						SetUdpLoginState(false);
 					}
 				}
-				if (diff >= m_heartBeatTime) //超时 下线
+				if (diff >= (m_registerTime*3)) //超时 下线
 				{
+					m_doorClient->Stop();
 					m_lastMsgTimeBak.update();
 					SetUdpLoginState(false);
 				}
@@ -528,7 +512,7 @@ namespace CMM{
 				}
 				ReportAlarms();
 				m_nRetry = 0;
-				if (diff >= (m_heartBeatTime))
+				if (diff >= (m_registerTime*3)) //超过三倍时间没更新时间 说明连接有问题 重新注册
 				{
 					SetLoginState(false);
 					Login();
@@ -539,46 +523,47 @@ namespace CMM{
 		stop();
 	}
 	
-	void CMMAccess::Init()
-	{			
+	bool CMMAccess::Init()
+	{		
+		if (!CMMParam::instance()->Init())
+		{
+			return false;
+		}
+		CMMConfig::instance()->Init();
+
 		SetPowerdownAlarmParam(10);		
+	
+		m_scUdpPoint = CMMParam::instance()->m_ScUdpPort;
+			
+		m_scEndPoint = CMMParam::instance()->m_ScEndPoint;
+		
+		m_fsuEndPoint = CMMParam::instance()->m_FsuEndPoint;
+	
+		m_registerTime = CMMParam::instance()->m_LoginPeriod.convertInt();
+
+		m_csvExpire = CMMParam::instance()->m_CsvExpire.convertInt();  //历史记录过期时间(天)
+		m_csvMeasureTime = CMMParam::instance()->m_CsvMeasurementTime.convertInt();  //AI历史存储周期(分钟):
+
+		m_soapEnable = CMMParam::instance()->m_SoapEnable == "true" ? 1 : 0;
+
+		int webPort = CMMParam::instance()->m_WebPort.convertInt();
+		int udpPort = CMMParam::instance()->m_ScPort.convertInt();
+
 		m_recoverPowerdownAlarmParamTimer = new ISFIT::CTimer(this, &CMMAccess::SetPowerdownAlarmParam, 1000*10, false, 0);
 		m_updateDevTimer = new ISFIT::CTimer(this, &CMMAccess::UpdateDevConf, 1000*30, true, 0);
 		m_wirteMeasurementFileTimer = new ISFIT::CTimer(this, &CMMAccess::WriteMeasureFile, 1000 * 60, true, 0);
-		CMMDeviceConfig::instance()->Init();
-		CMMConfig::instance()->Init();
-		int isUart = CMMConfig::instance()->GetParam(CMM::param::IsUart, "0").convertInt();
-		m_bIsUart = isUart > 0 ? true : false;
 
-		m_scUdpPoint = "udp://" + CMMConfig::instance()->GetParam(CMM::param::SCUdpIp, "1.1.1.1") + ":"
-			+ CMMConfig::instance()->GetParam(CMM::param::SCUdpPort, "8445") + "/v1/services/newLSCService";//LSCService
-		m_scEndPoint = "http://" + CMMConfig::instance()->GetParam(CMM::param::SCIp, "1.1.1.1") + ":"
-			+ CMMConfig::instance()->GetParam(CMM::param::SCPort, "8444") + "/v1/services/newLSCService";//LSCService
-		
-		m_fsuEndPoint = CMMConfig::instance()->GetParam(CMM::param::FsuEndPoint, "/v1/services/newFSUService");
-	
-		m_heartBeatTime =  CMMConfig::instance()->GetParam(CMM::param::HeartBeatTimeout, "300").convertInt();
-
-		m_registerTime = CMMConfig::instance()->GetParam(CMM::param::LoginTimeout, "60").convertInt();
-
-		m_wirteFileTime = CMMConfig::instance()->GetParam(CMM::param::GetMeasurementTime, "15").convertInt();
-
-		int fsuPort = CMMConfig::instance()->GetParam(CMM::param::FsuPort, "8444").convertInt();
-		int webPort = CMMConfig::instance()->GetParam(CMM::param::WebPort, "8080").convertInt();
-		int udpPort = CMMConfig::instance()->GetParam(CMM::param::UdpPort, "8445").convertInt();
-		
-		
-		m_webServer->Start(webPort);
-		m_udpServer->Start(udpPort);
-		m_server->Start(fsuPort, m_fsuEndPoint);
+		m_webServer->Start(webPort);            //web服务
+		m_doorServer->Start(CMMParam::instance()->m_ScProtocol.c_str(), udpPort); //门禁服务
+		m_server->Start(m_fsuEndPoint);
 		m_uartService->Start();
+		return true;
 	}
 
 	void CMMAccess::UpdateInterval(CData interval)
 	{
-		m_heartBeatTime = interval.convertInt();
-		CMMConfig::instance()->m_heartbeatTimeout=interval;
-		CMMConfig::instance()->SetParam(CMM::param::HeartBeatTimeout, interval);
+		m_registerTime = interval.convertInt();
+		CMMParam::instance()->SetParam(CMM::param::LoginPeriod, interval);
 	}
 
 	void CMMAccess::OnHeartBeat()
@@ -590,13 +575,10 @@ namespace CMM{
 	{
 	
 		//AddRoute(CMMConfig::instance()->m_scIp,CMMConfig::instance()->m_scIpRoute);
-		
 		CData loginInfo = CMMProtocolEncode::BuildLogMsg();
-
 		CData auth_header,token;
 		UpdateAuthHeader(loginInfo, auth_header, token);
 		Poco::FastMutex::ScopedLock lock(m_mutex);
-	
 		HTTPResponse response;
 		CData responseData;
 		int nRet = m_client->SendXmlData(m_scEndPoint.c_str(), loginInfo, auth_header, response, responseData);
@@ -621,13 +603,11 @@ namespace CMM{
 			if(bFirstReadDev)////第一次登录后读一次列表，确保设备全部读取完整
 			{
 				bFirstReadDev=false;
-				//CMMConfig::instance()->UpdateCfgFile();
 				CMMConfig::instance()->OnUpdateCfgFileTimer();
 				CMMConfig::instance()->WriteMeasurefile();	
 			}
 			SetLoginState(true);
 			m_RightLevel = ret;
-			
 			LogInfo("====Login ok ===");
 			m_lastMsgTime.update();
 		}
@@ -687,14 +667,14 @@ namespace CMM{
 
 	int CMMAccess::FromAlarmInfoToTAlarm2(std::map<CData, CData>& msg, TAlarm& alarm )
 	{
-		std::vector<int> IgAlarmLevelVec=CMMConfig::instance()->GetIgnoreAlarmLevel();
+		//std::vector<int> IgAlarmLevelVec = CMMParam::instance()->GetIgnoreAlarmLevel();
 		int iAlarmLevel=msg["alarmLevel"].convertInt();
-		if(std::find(IgAlarmLevelVec.begin(),IgAlarmLevelVec.end(),iAlarmLevel)!=IgAlarmLevelVec.end())
-		{
-			//查找到要过滤的
-			LogInfo("~~~~~~~~~~~~find IgnoreAlarmLevel, meterID:" << msg["meterId"]<<" AlarmLevel:"<<msg["alarmLevel"]<<" Config:"<<CMMConfig::instance()->m_IgnoreAlarmLevel);
-			return -1;
-		}	
+		//if(std::find(IgAlarmLevelVec.begin(),IgAlarmLevelVec.end(),iAlarmLevel)!=IgAlarmLevelVec.end())
+		//{
+		//	//查找到要过滤的
+		//	LogInfo("~~~~~~~~~~~~find IgnoreAlarmLevel, meterID:" << msg["meterId"]<<" AlarmLevel:"<<msg["alarmLevel"]<<" Config:"<<CMMConfig::instance()->m_IgnoreAlarmLevel);
+		//	return -1;
+		//}	
 
 		//key: serialNO devId meterId alarmLevel alarmFlag(begin,end) describe time triggerVal
 		CData serialNO= msg["serialNO"];
@@ -883,7 +863,7 @@ namespace CMM{
 	}
 
 	// 删除指定目录下超过三天的文件  
-	void deleteOldFiles() 
+	void deleteOldFiles(int days) 
 	{
 		Poco::File dir("/Measurement");
 		if (dir.exists() && dir.isDirectory())
@@ -891,7 +871,7 @@ namespace CMM{
 			// 获取当前UTC时间戳
 			time_t nowInSeconds = std::time(nullptr);
 			// 计算三天前的时间戳（以秒为单位）
-			time_t threeDaysAgoInSeconds = nowInSeconds - (3 * 24 * 60 * 60); // 减去3天
+			time_t threeDaysAgoInSeconds = nowInSeconds - (days * 24 * 60 * 60); // 减去days天
 			// 将时间戳转换为Poco::Timestamp对象
 			Poco::Timestamp threeDaysAgo = Poco::Timestamp::fromEpochTime(threeDaysAgoInSeconds);
 			Poco::DirectoryIterator it(dir.path());
@@ -929,10 +909,9 @@ namespace CMM{
 	void CMMAccess::WriteMeasureFile(int arg)
 	{
 		static int nCount = 1;
-		//LogInfo("nCount: "<< nCount << "   m_wirteFileTime :" << m_wirteFileTime);	
-		if(nCount >= m_wirteFileTime)
+		if(nCount >= m_csvMeasureTime)
 		{
-			deleteOldFiles();//执行写文件之前判断是否有3天前的文件 有则删除
+			deleteOldFiles(m_csvExpire);//执行写文件之前判断是否有3天前的文件 有则删除
 			if (CMMConfig::instance()->WriteMeasurefile())
 			{
 				//NotifySendData(mapSem); //写监控文件后发送SEND_DATA同步
@@ -1169,38 +1148,62 @@ namespace CMM{
 		{
 			ISFIT::Shell("ln -s " + upgradeDir + "  /upgrade");
 			LogInfo("======/upgrade not exists, create it====");
+			
 		}
-		param.push_back(std::make_tuple(CData(CMM::param::LoginState), CData("失败")));
-		param.push_back(std::make_tuple(CData(CMM::param::UdpLoginState), CData("失败")));
 
-		param.push_back(std::make_tuple(CData(CMM::param::FsuId), CData("00-53-4C-00-01-44")));
-		param.push_back(std::make_tuple(CData(CMM::param::UserName), CData("zhtest")));
-		param.push_back(std::make_tuple(CData(CMM::param::Password), CData("mKnxGe@9g*%8")));
-		param.push_back(std::make_tuple(CData(CMM::param::FtpUsr), CData("root")));
-		param.push_back(std::make_tuple(CData(CMM::param::FtpPasswd), CData("aga2ForIot!")));
-		param.push_back(std::make_tuple(CData(CMM::param::IsUart), CData("0")));
+		param.push_back(std::make_tuple(CData(CMM::param::LoginState), CData("未注册")));
+		param.push_back(std::make_tuple(CData(CMM::param::DoorLoginState), CData("未注册")));
 
-		param.push_back(std::make_tuple(CData(CMM::param::FsuPort), CData("8444")));
-		param.push_back(std::make_tuple(CData(CMM::param::UdpPort), CData("8445")));
-		param.push_back(std::make_tuple(CData(CMM::param::WebPort), CData("8080")));
-
+		param.push_back(std::make_tuple(CData(CMM::param::CsvEncoding), CData("GB18030")));
+		param.push_back(std::make_tuple(CData(CMM::param::CsvExpire), CData("15")));
+		param.push_back(std::make_tuple(CData(CMM::param::CsvMeasurementTime), CData("30")));
 		param.push_back(std::make_tuple(CData(CMM::param::SCIp), CData("36.133.176.228")));
 		param.push_back(std::make_tuple(CData(CMM::param::SCPort), CData("28006")));
-		param.push_back(std::make_tuple(CData(CMM::param::SCUdpIp), CData("192.168.1.168")));
 		param.push_back(std::make_tuple(CData(CMM::param::SCUdpPort), CData("8445")));
-		
+		param.push_back(std::make_tuple(CData(CMM::param::SCProtocol), CData("TCP")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::AuthEnable), CData("true")));
+		param.push_back(std::make_tuple(CData(CMM::param::EnginState), CData("false")));
+		param.push_back(std::make_tuple(CData(CMM::param::UpdateEnable), CData("false")));
+		param.push_back(std::make_tuple(CData(CMM::param::SoapEnable), CData("false")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::RebootEnable), CData("false")));
+		param.push_back(std::make_tuple(CData(CMM::param::RebootPeriod), CData("7")));
+		param.push_back(std::make_tuple(CData(CMM::param::RebootTime), CData("22:00")));
+		param.push_back(std::make_tuple(CData(CMM::param::FsuId), CData("false")));
+		param.push_back(std::make_tuple(CData(CMM::param::FsuEndPoint), CData("http://192.168.1.168:8080/v1/services/newFSUService")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::FtpUsr), CData("sftp")));
+		param.push_back(std::make_tuple(CData(CMM::param::FtpPasswd), CData("qwer@123")));
+		param.push_back(std::make_tuple(CData(CMM::param::FtpType), CData("sftp")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::LogFileSize), CData("1")));
+		param.push_back(std::make_tuple(CData(CMM::param::LogLevel), CData("FATAL")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::LoginPeriod), CData("30")));
+		param.push_back(std::make_tuple(CData(CMM::param::Algorithm), CData("sha256")));
+		param.push_back(std::make_tuple(CData(CMM::param::Password), CData("")));
+		param.push_back(std::make_tuple(CData(CMM::param::UserName), CData("")));
+		param.push_back(std::make_tuple(CData(CMM::param::SCEndPoint), CData("http://192.168.1.184:9080/v1/services/newLSCService")));
+
+
+		param.push_back(std::make_tuple(CData(CMM::param::SendPeriod), CData("30")));
+		param.push_back(std::make_tuple(CData(CMM::param::UpdateInterval), CData("120")));
+
+		param.push_back(std::make_tuple(CData(CMM::param::WebDevicedDB), CData("/userdata/db/web-api-device-props.sqlite")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebQueueDepth), CData("1024")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebInterval), CData("120")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebHost), CData("0.0.0.0")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebHtdocs), CData("/userdata/htdocs")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebMimes), CData("/userdata/conf/mime.types.properties")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebPort), CData("9080")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebStorageDevice), CData("/dev/mmcblk0p11")));
+		param.push_back(std::make_tuple(CData(CMM::param::WebVersion), CData("WebAPI/1.0")));
+
 		param.push_back(std::make_tuple(CData(CMM::param::SiteID), CData("5101072000001")));
 		param.push_back(std::make_tuple(CData(CMM::param::SiteName), CData("川成都高升桥枢纽站")));
 		param.push_back(std::make_tuple(CData(CMM::param::RoomID), CData("000000011")));
 		param.push_back(std::make_tuple(CData(CMM::param::RoomName), CData("室内汇聚机房")));
-
-		param.push_back(std::make_tuple(CData(CMM::param::GetMeasurementTime), CData("15")));
-		param.push_back(std::make_tuple(CData(CMM::param::HeartBeatTimeout), CData("300")));
-		param.push_back(std::make_tuple(CData(CMM::param::LoginTimeout), CData("60")));	
-		
-		param.push_back(std::make_tuple(CData(CMM::param::SoftVer), CData("4.5.0")));
-		param.push_back(std::make_tuple(CData(CMM::param::LogFileSize), CData("1")));
-		param.push_back(std::make_tuple(CData(CMM::param::LogLevel), CData("information")));
 
 		param.push_back(std::make_tuple(CData(CMM::param::UartName), CData("BottomBoard_Uart6")));
 		param.push_back(std::make_tuple(CData(CMM::param::BaudRate), CData("9600")));
@@ -1208,6 +1211,8 @@ namespace CMM{
 		param.push_back(std::make_tuple(CData(CMM::param::Parity), CData("N")));
 		param.push_back(std::make_tuple(CData(CMM::param::StopBit), CData("1")));
 		param.push_back(std::make_tuple(CData(CMM::param::SlaveID), CData("1")));
+
+
 
 		//param.push_back(std::make_tuple(CData(CMM::param::SCIpRoute), CData("eth0")));
 
@@ -1217,219 +1222,20 @@ namespace CMM{
 		
 	}
 
-	int CMMAccess::UpdateParam(std::map<CData, CData>& paramMap,std::map<CData,CData>& errorMap)
-	{
-		int ret =0;
-		CData d1,d2,d3,c1,c2,c3, dc1,dc2,dc3;
-		for (auto it=paramMap.begin(); it!=paramMap.end(); it++)
-		{
-			CData key = it->first;
-			CData val = it->second;
-			
-			LogNotice("UpdateParam() key:"<<key<<" val:"<<val);
-
-			if (key == CMM::param::FsuId)
-			{
-				CMMConfig::instance()->SetFsuId(val);
-				//CMMConfig::instance()->SetParam(CMM::param::FsuId, val);
-			}
-			else if (key == CMM::param::UserName)
-			{
-				CMMConfig::instance()->SetUserName(val);
-				//CMMConfig::instance()->SetParam(CMM::param::UserName, val);
-			}
-			else if (key ==CMM::param::Password)
-			{
-				CMMConfig::instance()->SetPassword(val);
-				//CMMConfig::instance()->SetParam(CMM::param::Password, val);
-			}
-			else if (key == CMM::param::FtpUsr)
-			{
-				CMMConfig::instance()->SetFtpUsr(val);
-			}
-			else if (key ==CMM::param::FtpPasswd)
-			{
-				ret=CMMConfig::instance()->SetFtpPasswd(val);
-				if(ret!=0)
-				{
-					LogInfo("SetFtpPasswd=== ret:"<<ret);
-					ret = -100;
-					errorMap[key] = "setftppwd_error";
-				}
-			}
-			else if (key == CMM::param::IsUart)
-			{
-				m_bIsUart = val.convertInt() > 0 ? true : false;
-			}
-			else if (key == CMM::param::FsuIp)
-			{
-				CMMConfig::instance()->SetFsuIp(val);
-				//CMMConfig::instance()->SetParam(CMM::param::FsuIp, val);
-			}
-			else if (key == CMM::param::FsuPort)
-			{
-				CMMConfig::instance()->SetFsuPort(val);
-				m_server->ListenPortChange(val.convertInt());
-			}
-			else if (key == CMM::param::UdpPort)
-			{
-				CMMConfig::instance()->SetUdpPort(val);
-				m_udpServer->ListenPortChange(val.convertInt());
-			}
-			else if (key == CMM::param::WebPort)
-			{
-				m_webServer->ListenPortChange(val.convertInt());
-			}
-			else if (key == CMM::param::SCIp)
-			{
-				CData scIp = resolveDomainToIp(val.c_str());
-				CMMConfig::instance()->m_scIp = scIp;
-				//CMMConfig::instance()->SetParam(CMM::param::SCIp, val);
-				CData scEndPoint;
-				scEndPoint = "http://" + scIp + ":" + CMMConfig::instance()->m_scPort + "/v1/services/newLSCService";
-				if (m_scEndPoint != scEndPoint)
-				{
-					m_scEndPoint = scEndPoint;
-					LogInfo("change tcp dst host:" << m_scEndPoint);
-					SetLoginState(false);
-				}
-			}
-			else if (key == CMM::param::SCPort)
-			{
-				CMMConfig::instance()->m_scPort = val;
-				//CMMConfig::instance()->SetParam(CMM::param::SCPort, val);
-				CData scEndPoint;
-				scEndPoint = "http://" + CMMConfig::instance()->m_scIp + ":" + val + "/v1/services/newLSCService";
-				if (m_scEndPoint != scEndPoint)
-				{
-					m_scEndPoint = scEndPoint;
-					LogInfo("change tcp dst host:" << m_scEndPoint);
-					SetLoginState(false);
-				}
-			}
-			else if (key == CMM::param::SCUdpIp)
-			{
-				CData scIp = resolveDomainToIp(val.c_str());
-				CMMConfig::instance()->m_scUdpIp = scIp;
-				//CMMConfig::instance()->SetParam(CMM::param::SCIp, val);
-				CData scUdpPoint;
-				scUdpPoint = "udp://" + scIp + ":" + CMMConfig::instance()->m_scUdpPort + "/v1/services/newLSCService";
-				if (m_scUdpPoint != scUdpPoint)
-				{
-					m_scUdpPoint = scUdpPoint;
-					LogInfo("change udp dst host:" << m_scUdpPoint);
-					SetLoginState(false);
-				}
-			}
-			else if (key == CMM::param::SCUdpPort)
-			{
-				CMMConfig::instance()->m_scUdpPort = val;
-				//CMMConfig::instance()->SetParam(CMM::param::SCPort, val);
-				CData scUdpPoint;
-				scUdpPoint = "udp://" + CMMConfig::instance()->m_scUdpIp + ":" + val + "/v1/services/newLSCService";
-				if (m_scUdpPoint != scUdpPoint)
-				{
-					m_scUdpPoint = scUdpPoint;
-					LogInfo("change udp dst host:" << m_scUdpPoint);
-					SetLoginState(false);
-				}
-			}
-			else if (key == CMM::param::SCIpRoute)
-			{
-				CMMConfig::instance()->m_scIpRoute = val;
-				//CMMConfig::instance()->SetParam(CMM::param::SCIpRoute, val);
-			}
-			
-			else if (key==CMM::param::SiteID)
-			{
-				CMMConfig::instance()->m_SiteID = val;
-			}		
-			else if (key==CMM::param::SiteName)
-			{
-				CMMConfig::instance()->m_SiteName =val;
-			}		
-			else if (key==CMM::param::RoomID)
-			{
-				CMMConfig::instance()->m_RoomID = val;
-			}		
-			else if (key==CMM::param::RoomName)
-			{
-				CMMConfig::instance()->m_RoomName= val;
-			}		
-			
-			else if (key == CMM::param::HeartBeatTimeout)
-			{
-				CMMConfig::instance()->m_heartbeatTimeout = val;
-				//CMMConfig::instance()->SetParam(CMM::param::HeartBeatTimeout, val);
-				m_heartBeatTime= val.convertInt();
-			}	
-			else if (key == CMM::param::LoginTimeout)
-			{
-				CMMConfig::instance()->m_loginTimeout = val;
-				//CMMConfig::instance()->SetParam(CMM::param::LoginTimeout, val);
-				m_registerTime = val.convertInt();
-			}
-		
-			else if (key == CMM::param::LogFileSize)
-			{
-				
-			}
-			else if (key == CMM::param::LogLevel)
-			{
-				APPAPI::SetLogLevel(val);
-			}
-			else if (key == CMM::param::SoftVer)
-			{
-				CMMConfig::instance()->m_fsuVersion = val;
-				//CMMConfig::instance()->SetParam(CMM::param::SoftVer, val);
-
-			}
-			else if (key == CMM::param::GetMeasurementTime)
-			{
-				CMMConfig::instance()->m_getMeasureMentTime = val;
-				//CMMConfig::instance()->SetParam(CMM::param::GetMeasurementTime, val);
-				m_wirteFileTime = val.convertInt();
-			}
-			else if (key == CMM::param::UartName)
-			{
-				m_uartService->setUartName(val.c_str());
-			}
-			else if (key == CMM::param::BaudRate)
-			{
-				m_uartService->setBaudrate(val.convertInt());
-			}
-			else if (key == CMM::param::DataBit)
-			{
-				m_uartService->setDataBits(val.convertInt());
-			}
-			else if (key == CMM::param::StopBit)
-			{
-				m_uartService->setStopBits(val.convertInt());
-			}
-			else if (key == CMM::param::Parity)
-			{
-				m_uartService->setParity(val.c_str());
-			}
-			else if (key == CMM::param::SlaveID)
-			{
-				m_uartService->setSlaveID(val.convertInt());
-			}
-		}
-		ReportDevConf();
-		return ret;
-	}
-	
-
 	void CMMAccess::start()
 	{			
 		LogInfo("======>CMMAccess start====>");
 		if(m_bStart)
 		{
-			LogError("CMMAccess has started");
+			LogError("CMMAccess has started。");
 			return ;
 		}
 		m_bStart = true;
-		Init();
+		if (!Init())
+		{
+			LogError("CMMAccess initial failed.");
+			return;
+		}
 		m_thread.start(*this);
 		m_secondThread.start(threadFunction2, this);
 		LogInfo("======>CMMAccess start ok====>");
@@ -1449,8 +1255,8 @@ namespace CMM{
 	
 	void CMMAccess::DeInit()
 	{
-		if(m_udpServer)
-			m_udpServer->Stop();
+		if(m_doorServer)
+			m_doorServer->stopServer();
 		if(m_server)
 			m_server->Stop();	
 		if (m_uartService)
@@ -1517,8 +1323,8 @@ namespace CMM{
 
 	void CMMAccess::UpdateAuthHeader(const CData& message, CData& authHeader, CData& strtoken)
 	{
-		CData strUser = CMMConfig::instance()->m_userName;
-		CData strPass = CMMConfig::instance()->GetPassword();
+		CData strUser = CMMParam::instance()->m_UserName;
+		CData strPass = CMMParam::instance()->m_Password;
 		//CData strVersion = CMMConfig::instance()->m_fsuVersion;
 		CData strOutPass;
 		//if (true == CTextEncryption::hashMessage(strPass, strOutPass, 1)) //sha256 散列passwd
@@ -1580,7 +1386,7 @@ namespace CMM{
 
 	bool CMMAccess::SendUartDataToSC(std::vector<uint8_t>& sendBuffer)
 	{
-		if (0 > m_udpClient->SendData(m_scUdpPoint.c_str(), sendBuffer))
+		if (0 > m_doorClient->SendData(m_scUdpPoint.c_str(), CMMParam::instance()->m_ScProtocol,sendBuffer))
 			return false;
 		return true;
 	}
@@ -1590,6 +1396,11 @@ namespace CMM{
 		if (!m_uartService->writeData(sendBuffer))
 			return false;
 		return true;
+	}
+
+	void CMMAccess::SaveDataLog(std::map<CData, CData>& msg)
+	{
+		m_datalog.Save(msg);
 	}
 }
 

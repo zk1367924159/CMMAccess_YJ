@@ -6,17 +6,8 @@
 
 namespace CMM
 {
-	CMeteTranslate* CMeteTranslate::_instance = NULL;
-	CMeteTranslate* CMeteTranslate::Instance()
-	{
-		if(_instance == NULL)
-		{
-			_instance = new CMeteTranslate();
-		}
-		return _instance;
-	}
 
-	void CMeteTranslate::Init()
+	void CMMMeteTranslate::Init(std::map<CData, CData>& metesMap)
 	{
 		ISFIT::CSqliteObj sqlite;
 		CData sql = "select * from cmm_mete";
@@ -26,11 +17,11 @@ namespace CMM
 		for(int i =0; i < count; i++)
 		{
 			record = sqlite.GetRecord(i);
-			m_metesMap[record.GetValue("innerId")] = record.GetValue("cmmId");
+			metesMap[record.GetValue("innerId")] = record.GetValue("cmmId");
 		}
 	}
 
-	CData CMeteTranslate::FromInnerToCMM(int id, int &SignalNumber)
+	CData CMMMeteTranslate::FromInnerToCMM(int id, int &SignalNumber)
 	{
 		//canyon
 
@@ -41,44 +32,17 @@ namespace CMM
 		CData meterId(cid);
 		SignalNumber = signalNum; 
 		return meterId;
-
-		/*
-		CData innerId = CData(id);
-		SignalNumber = innerId.substr(7,2).convertInt();
-		innerId = innerId.substr(0,7)+"01";
-		return FromInnerToCMM(innerId);*/
 	}
 
-	CData CMeteTranslate::FromInnerToCMM( CData id )
-	{
-		std::map<CData, CData>::iterator pos = m_metesMap.find(id);
-		if(pos == m_metesMap.end())
-		{
-			return CData("");
-		}
-		return pos->second;
-	}
 
-	CData CMeteTranslate::FromCMMToInner( CData cmmId, int signalNumber )
+	CData CMMMeteTranslate::FromCMMToInner( CData cmmId, int signalNumber )
 	{
 		CData innerId(cmmId.convertInt()*1000 + signalNumber);
 		return innerId; 
-
-		/*
-		std::map<CData, CData>::iterator pos = m_metesMap.begin();
-		while(pos != m_metesMap.end())
-		{
-			if(id.compare(pos->second) == 0)
-			{
-				return pos->first;
-			}
-			pos++;
-		}
-		return CData("");*/
 	}
 
 
-	int CMeteTranslate::ConvertToCmmMeterType(CData meterType)
+	int CMMMeteTranslate::ConvertToCmmMeterType(CData meterType)
 	{
 		if (meterType == "AI")
 		{
@@ -99,7 +63,7 @@ namespace CMM
 		return CMM::AI;
 	}
 
-	int CMeteTranslate::FromInnerPortTypeToCMM(int type, int dataType)
+	int CMMMeteTranslate::FromInnerPortTypeToCMM(int type, int dataType)
 	{
 		if(type == SMART_DEV_METE_INFO::ALARM)
 		{

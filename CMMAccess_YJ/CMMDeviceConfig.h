@@ -11,9 +11,7 @@ namespace CMM{
 		std::map<CData, TDeviceInfo> m_aliasId2Info;  //设备ID---》设备信息	
 		std::string m_jsonData; //最新设备列表json文本
 		ISFIT::CSmartMutex m_devCfgMutex;
-		static CMMDeviceConfig* _instance;
 	public:
-		static CMMDeviceConfig* instance();
 		int Init();
 		std::vector<int> vStringSplit(const CData& s, const std::string& delim=",");
 		/*

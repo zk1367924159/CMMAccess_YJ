@@ -62,11 +62,11 @@ class CWebRequestHandlerFactory : public HTTPRequestHandlerFactory
 		std::map<CData, HTTPRequestHandler*> m_HttpRequestHandlerMap;
 };
 
-class CWebServer : public Poco::Runnable
+class WebServer : public Poco::Runnable
 {
 	public:
-		CWebServer();
-		~CWebServer();
+		WebServer();
+		~WebServer();
 		int Start(int port);
 		int Stop();
 		void DeleteConnection(CData clientIp, int port);

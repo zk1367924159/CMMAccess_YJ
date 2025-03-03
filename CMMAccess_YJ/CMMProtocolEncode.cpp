@@ -1,7 +1,7 @@
 #include "CMMProtocolEncode.h"
 #include "CLog.h"
 #include "CMMCommonStruct.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 #include "NetModule.h"
 #include "NetComm/ModuleVersions.h"
 #include "CMMMeteTranslate.h"
@@ -29,14 +29,14 @@ namespace CMM{
 	
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);
 	
-			info.AddSubElement(CMM::UserName).SetElementText(CMMConfig::instance()->m_userName.c_str());
+			info.AddSubElement(CMM::UserName).SetElementText(CMMParam::instance()->m_UserName.c_str());
 			CData hashPasswd;
-			CTextEncryption::hashMessage(CMMConfig::instance()->GetPassword(), hashPasswd, 1);
+			CTextEncryption::hashMessage(CMMParam::instance()->m_Password, hashPasswd, 1);
 			info.AddSubElement(CMM::PassWord).SetElementText(hashPasswd.c_str());
 			info.AddSubElement(CMM::AlgType).SetElementText(1);
-			info.AddSubElement(CMM::FSUID).SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement(CMM::FSUID).SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			CData mac = CMMAccess::instance()->GetLocalMac();
-			CData localIp = CMMConfig::instance()->GetFsuIp();		// DAHAI
+			CData localIp = CMMParam::instance()->m_FsuEndPoint;		// DAHAI
 			info.AddSubElement(CMM::FSUIP).SetElementText(localIp.c_str());
 			info.AddSubElement(CMM::FSUMAC).SetElementText(mac.c_str());
 
@@ -45,7 +45,7 @@ namespace CMM{
 			CData ver = verMap["appVer"];
 			//info.AddSubElement(CMM::FSUVER).SetElementText(ver.c_str()); //V2.03.39-beta15
 			info.AddSubElement(CMM::FSUVER).SetElementText(ver.c_str());
-			//info.AddSubElement("FSUPORT").SetElementText(CMMConfig::instance()->GetFsuPort().c_str());
+			//info.AddSubElement("FSUPORT").SetElementText(CMMParam::instance()->GetFsuPort().c_str());
 		}
 		catch (Poco::Exception& ex)
 		{
@@ -66,7 +66,7 @@ namespace CMM{
 			pkType.GetSubElement(CMM::Name).SetElementText(CMM::method::SEND_DEV_CONF_DATA);
 
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
-			info.AddSubElement(CMM::FSUID).SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement(CMM::FSUID).SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement values = info.AddSubElement(CMM::Values);
 			//ISFIT::CXmlElement DeviceList = values.AddSubElement(CMM::DeviceList);
 			AddDevicesInfo(values);
@@ -197,7 +197,7 @@ namespace CMM{
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
 			info.AddSubElement("Result").SetElementText(CMM::SUCCESS);
 			info.AddSubElement("FailureCause").SetElementText("NULL");
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement TFSUStatus =  info.AddSubElement("TFSUStatus");
 			CData cpuUsage, memUsage;
 			APPAPI::GetMeterVal("215001", "138101001", "msj", cpuUsage);
@@ -230,7 +230,7 @@ namespace CMM{
 			//info.AddSubElement("FailureCause").SetElementText("NULL");
 			info.AddSubElement("Result").SetElementText(result);
 			info.AddSubElement("FailureCause").SetElementText(FailureCause.c_str());
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Success = info.AddSubElement("SuccessList");
 			std::list<CData>::iterator pos = scucessList.begin();
 			while (pos != scucessList.end())
@@ -276,7 +276,7 @@ namespace CMM{
 			{
 				info.AddSubElement("FailureCause").SetElementText("获取监控点数据失败");
 			}
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Values =  info.AddSubElement("Values");
 			ISFIT::CXmlElement DeviceList = Values.AddSubElement("DeviceList");
 			if(result == CMM::SUCCESS)
@@ -337,7 +337,7 @@ namespace CMM{
 			{
 				info.AddSubElement("FailureCause").SetElementText("获取监控点存储规则失败");
 			}
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Values =  info.AddSubElement("Values");
 			ISFIT::CXmlElement DeviceList = Values.AddSubElement("DeviceList");
 			if(result == CMM::SUCCESS)
@@ -386,7 +386,7 @@ namespace CMM{
 			pkType.GetSubElement(CMM::Name).SetElementText(CMM::method::SEND_ALARM);
 
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Values = info.AddSubElement("Values");
 			ISFIT::CXmlElement TAlarmList = Values.AddSubElement("TAlarmList");
 			std::list<TAlarm>::iterator pos = alarmList.begin();
@@ -460,7 +460,7 @@ namespace CMM{
 			{
 				info.AddSubElement("FailureCause").SetElementText("获取监控点门限数据失败");
 			}			
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Values =  info.AddSubElement("Values");
 			ISFIT::CXmlElement DeviceList = Values.AddSubElement("DeviceList");
 			if(result == CMM::SUCCESS)
@@ -512,7 +512,7 @@ namespace CMM{
 			pkType.GetSubElement(CMM::Name).SetElementText(CMM::method::SEND_DATA);
 
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement Values = info.AddSubElement("Values");
 			ISFIT::CXmlElement DeviceList = Values.AddSubElement("DeviceList");
 
@@ -567,14 +567,14 @@ namespace CMM{
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
 			info.AddSubElement("Result").SetElementText(CMM::SUCCESS);
 			info.AddSubElement("FailureCause").SetElementText("NULL");
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			/*CData user, password;
 			FSUUTIL::GetFtpUser(user, password);
 			info.AddSubElement("UserName").SetElementText(user.c_str());
 			info.AddSubElement("PassWord").SetElementText(password.c_str());*/
 			
-			info.AddSubElement("UserName").SetElementText(CMMConfig::instance()->m_ftpUsr.c_str());
-			info.AddSubElement("PassWord").SetElementText(CMMConfig::instance()->m_ftpPasswd.c_str());						
+			info.AddSubElement("UserName").SetElementText(CMMParam::instance()->m_FtpUsr.c_str());
+			info.AddSubElement("PassWord").SetElementText(CMMParam::instance()->m_FtpPasswd.c_str());						
 		}
 		catch (Poco::Exception& ex)
 		{
@@ -597,7 +597,7 @@ namespace CMM{
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
 			info.AddSubElement("Result").SetElementText(result);
 			info.AddSubElement("FailureCause").SetElementText(reason.c_str());
-			//info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			//info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 		}
 		catch (Poco::Exception& ex)
 		{
@@ -618,10 +618,10 @@ namespace CMM{
 			pkType.GetSubElement(CMM::Name).SetElementText(type.c_str());
 
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			info.AddSubElement("Result").SetElementText(result);
 			info.AddSubElement("FailureCause").SetElementText(reason.c_str());
-			//info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			//info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 		}
 		catch (Poco::Exception& ex)
 		{
@@ -644,9 +644,9 @@ namespace CMM{
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);			
 			info.AddSubElement("Result").SetElementText(CMM::SUCCESS);
 			info.AddSubElement("FailureCause").SetElementText("NULL");
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
-			info.AddSubElement("UserName").SetElementText(CMMConfig::instance()->GetUserName().c_str());
-			info.AddSubElement("PassWord").SetElementText(CMMConfig::instance()->GetPassword().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
+			info.AddSubElement("UserName").SetElementText(CMMParam::instance()->m_UserName.c_str());
+			info.AddSubElement("PassWord").SetElementText(CMMParam::instance()->m_Password.c_str());
 			CData mac = CMMAccess::instance()->GetLocalMac();
 			CData localIp = CMMAccess::instance()->GetIfcIp("eth0");
 			info.AddSubElement("FSUIP").SetElementText(localIp.c_str());
@@ -657,10 +657,10 @@ namespace CMM{
 			CData ver = verMap["appVer"];
 			info.AddSubElement("FSUVER").SetElementText(ver.c_str());
 			
-			info.AddSubElement("SiteID").SetElementText(CMMConfig::instance()->m_SiteID.c_str());
-			info.AddSubElement("RoomID").SetElementText(CMMConfig::instance()->m_RoomID.c_str());
-			info.AddSubElement("SiteName").SetElementText(CMMConfig::instance()->m_SiteName.c_str());
-			info.AddSubElement("RoomName").SetElementText(CMMConfig::instance()->m_RoomName.c_str());
+			info.AddSubElement("SiteID").SetElementText(CMMParam::instance()->m_SiteID.c_str());
+			info.AddSubElement("RoomID").SetElementText(CMMParam::instance()->m_RoomID.c_str());
+			info.AddSubElement("SiteName").SetElementText(CMMParam::instance()->m_SiteName.c_str());
+			info.AddSubElement("RoomName").SetElementText(CMMParam::instance()->m_RoomName.c_str());
 
 		}
 		catch (Poco::Exception& ex)
@@ -684,7 +684,7 @@ namespace CMM{
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);
 			info.AddSubElement("Result").SetElementText(result);
 			info.AddSubElement("FailureCause").SetElementText(reason.c_str());
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 
 			ISFIT::CXmlElement time = info.AddSubElement(CMM::Time);
 
@@ -726,7 +726,7 @@ namespace CMM{
 			pkType.GetSubElement(CMM::Name).SetElementText(CMM::method::GET_DATA);
 
 			ISFIT::CXmlElement info = root.AddSubElement(CMM::Info);
-			info.AddSubElement("FSUID").SetElementText(CMMConfig::instance()->GetFsuId().c_str());
+			info.AddSubElement("FSUID").SetElementText(CMMParam::instance()->m_FsuId.c_str());
 			ISFIT::CXmlElement DeviceList = info.AddSubElement("DeviceList");
 
 			std::map<CData, std::list<TSemaphore>>::iterator iter = mapSem.begin();

@@ -5,7 +5,7 @@
 
 
 #include "CMMMeteTranslate.h"
-#include "CMMConfig.h"
+#include "CMMParam.h"
 #include "SysCommon.h"
 #include "CLog.h"
 
@@ -143,7 +143,7 @@ namespace CMM
 			int iID=id.convertInt();
 			
 			CData meterIdTmp =meterId.substr(0,len-3);
-			int type=CMeteTranslate::Instance()->ConvertToCmmMeterType(msg["meterType"]);
+			int type=CMMMeteTranslate::ConvertToCmmMeterType(msg["meterType"]);
 			CData strSignalNumber = meterId.substr(len-3,3);			
 			 
 			if(len>3&&Is_rangeAlarm(iID))
@@ -167,7 +167,7 @@ namespace CMM
 	void CMMDataLog::GenFileName( Poco::DateTime &date, CData &fileName )
 	{
 		char buf[256] = {0};
-		sprintf(buf,"/Measurement/PM_%s_%04d%02d%02d%02d%02d.csv",CMMConfig::instance()->GetFsuId().c_str(), date.year(), date.month(), date.day(), date.hour(), 0); //date.minute());
+		sprintf(buf,"/Measurement/PM_%s_%04d%02d%02d%02d%02d.csv",CMMParam::instance()->m_FsuId.c_str(), date.year(), date.month(), date.day(), date.hour(), 0); //date.minute());
 		fileName = buf;
 	}
 
