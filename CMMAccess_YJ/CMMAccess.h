@@ -53,10 +53,9 @@ namespace CMM{
 
 		virtual void run();
 		void runEx();
-		void OnHeartBeat();
-		void UpdateInterval(CData interval);
+		void OnHeartBeat();	
 		int DoMsgProcess(char* request, char* response, int size);
-		int DoMsgProcess_Error(char* request, char* response, int size);
+		int DoMsgProcess_Error(char* request, char* response, int size,int nType, std::string errMsg = "");
 		int GetServerStatus(TServerStatus& sts);
 		int SendRequestToServer(CData& reportInfo);
 		void TestStart(int arg);
@@ -67,7 +66,7 @@ namespace CMM{
 			CData dlyTime3, CData clearDlyTime3);
 		int UpdateParam(std::map<CData, CData>& paramMap, std::map<CData, CData>& errorMap);
 		void initialize(std::list<std::tuple<CData, CData> >& param);
-		CData describe() { return "中国移动B接口APP_V1.0.0.20240910"; };	// DAHAI
+		CData describe() { return "中国移动B接口APP_V1.0.0.20250306"; };	// DAHAI
 		void start();
 		void stop();
 		void unInitialize();
@@ -94,37 +93,29 @@ namespace CMM{
 		void WriteMeasureFile(int arg);
 		int FromAlarmInfoToTAlarm2(std::map<CData, CData>& msg, TAlarm& alarm);
 		CData resolveDomainToIp(const char* domainName);
-	private:
-		bool m_soapEnable;
-		int m_csvExpire;
-		int m_csvMeasureTime;
+		void AutoReboot(int arg);
 	public:
 		CData m_hashPassword;   //sh256散列后的密码
 		bool m_bLoginOK;
-		bool m_bIsUart;        //是否开启透传模式
 		bool m_bStart;
-		CData m_scUdpPoint;//SC udp
-		int m_registerTime;
 		Poco::Timestamp m_lastMsgTimeBak;
 		bool m_udpRegisterStatus;
 		Poco::SharedPtr<DoorClient>   m_doorClient;
 		Poco::SharedPtr<DoorServerManger>   m_doorServer;
 		Poco::SharedPtr<CMMUart>   m_uartService;
 	private:
+		static CMMAccess* _instance;
 		static Poco::FastMutex m_mutex;
 		Poco::Thread m_thread;
 		Poco::Thread m_secondThread;
-		static CMMAccess* _instance;
+
 		Poco::Timestamp m_lastMsgTime;
 		int m_registerStatus;
 		int m_RightLevel;
 		int m_wirteFileTime;
 		int m_nRetry;  //重试次数
-		CData m_scEndPoint;  //SC http
-		CData m_fsuEndPoint;
-		CData m_scDomain; //sc域名
 		MsgProcess m_msgProcess;
-		//int m_heartBeatTimeout;	
+
 		Poco::SharedPtr<HttpClient>   m_client;
 		Poco::SharedPtr<HttpServer>   m_server;
 		Poco::SharedPtr<WebServer>   m_webServer;
@@ -138,6 +129,7 @@ namespace CMM{
 		Poco::SharedPtr<ISFIT::CTimer> m_recoverPowerdownAlarmParamTimer;
 		Poco::SharedPtr<ISFIT::CTimer> m_updateDevTimer;
 		Poco::SharedPtr<ISFIT::CTimer> m_wirteMeasurementFileTimer;
+		Poco::SharedPtr<ISFIT::CTimer> m_rebootTimer;
 	};
 
 };

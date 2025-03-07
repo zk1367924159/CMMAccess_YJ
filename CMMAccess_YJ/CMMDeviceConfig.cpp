@@ -15,7 +15,7 @@
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
 #include "../../ExtAppIpc/ExtAppIpcStruct.h"
 
-#define  CMM_DEVICE_JSON_FILE_PATH "/appdata/config/CMMAccess_YJ_device.json"
+#define  CMM_DEVICE_JSON_FILE_PATH "/appdata/config/CMMAccessB_device.json"
 namespace CMM{
 	std::vector<int> CMMDeviceConfig::vStringSplit(const  CData& s, const std::string& delim)
 	{

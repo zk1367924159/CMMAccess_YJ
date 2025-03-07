@@ -76,7 +76,7 @@ namespace CMM
     void CMMUart::run()
     {
         int     length = 0;
-		m_uartname = CMMParam::instance()->GetParam(param::UartName, "COM5").c_str();
+		m_uartname = CMMParam::instance()->GetParam(param::UartName, "").c_str();
 		m_baudrate = CMMParam::instance()->GetParam(param::BaudRate, "9600").convertInt();
 		m_dataBits = CMMParam::instance()->GetParam(param::DataBit, "8").convertInt();
 		m_parity = CMMParam::instance()->GetParam(param::Parity, "N").c_str();
@@ -152,8 +152,7 @@ namespace CMM
     {
 		if (uartname.empty())
 		{
-			m_uartID = 5;
-			return "BottomBoard_Uart6";
+			return "";
 		}
         CData uartID = uartname.c_str();
         if (!uartname.empty())
@@ -206,6 +205,8 @@ namespace CMM
 
     void CMMUart::setUartParam()
     {
+		if (m_uartname.empty())
+			return;
         APPAPI::SetUartParam(m_uartname, m_baudrate, m_dataBits, m_parity, m_stopBits);
 
         LogInfo("串口 " << m_uartname << " 设置参数: 波特率 - " << m_baudrate << ", 数据位 - " << m_dataBits << ", 校验 - " << m_parity << ", 停止位 - " << m_stopBits);

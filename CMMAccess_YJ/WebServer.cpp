@@ -89,9 +89,9 @@ namespace CMM
 		CData requestUri = request.getURI();
 		CData method = request.getMethod().c_str();
 		Poco::URI uri(requestUri.c_str());
-		CData path = uri.getPath();
+		CData path = uri.getPath().c_str();
 		std::string param = uri.getQuery();
-		LogInfo("method : " << method << "  param :" << param);
+		LogInfo("method : " << method << "  param :" << param << " path: " <<path);
 		if (method == "GET")
 		{
 			if (path == "/GetDevice")
@@ -156,14 +156,12 @@ namespace CMM
 		}
 		else if (method == "POST")
 		{
-			
-			LogInfo("path: " << path);
+			std::istream& rs = request.stream();
+			std::string content((std::istreambuf_iterator<char>(rs)),
+					std::istreambuf_iterator<char>());
+			LogInfo("POST httpbody: " << content);
 			if (path == "/SetDevice")
 			{
-				std::istream& rs = request.stream();
-				std::string content((std::istreambuf_iterator<char>(rs)),
-					std::istreambuf_iterator<char>());
-				LogInfo("content: " << content);
 				int nRet =  CMMConfig::instance()->GetDeviceConfig()->SetDevConf(content);
 				if (0 != nRet)
 				{
@@ -181,18 +179,34 @@ namespace CMM
 			}
 			else if (path == "/api/LoadParams")
 			{
-
+				std::string stdJson = CMMParam::instance()->LoadParams();  //同步更新CMMConfig dev conf内容
+				response.setStatus(HTTPResponse::HTTP_OK);
+				response.setContentType("application/json");
+				std::ostream& out = response.send();
+				out << stdJson;
 			}
-			else if (path == "/api/SavaParams")
+			else if (path == "/api/SaveParams")
 			{
-
+				CMMParam::instance()->SavaParams(content);  //同步更新CMMConfig dev conf内容
+				response.setStatus(HTTPResponse::HTTP_OK);
+				response.setContentType("application/json");
+				std::ostream& out = response.send();
+				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(0);
+			}
+			else if (path == "/")
+			{
+				response.setStatus(HTTPResponse::HTTP_OK);
+				response.setContentType("application/json");
+				std::ostream& out = response.send();
+				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(0);
 			}
 			else
 			{
+				LogInfo("22222222");
 				response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 				response.setContentType("application/json");
 				std::ostream& out = response.send();
-				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(-2);
+				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(-999);
 				return;
 			}
 		}

@@ -106,12 +106,12 @@ namespace CMM
 			std::lock_guard<std::mutex> lock(_mutex);
 			stopServer();
 			_currentServer = nullptr;
-			if (type == "TCP")
+			if (type == "tcp")
 			{
 				_currentServer = new TcpServer(port);
 				LogInfo("Start tcp port: " << port);
 			}
-			else if (type == "UDP")
+			else if (type == "udp")
 			{
 				// Note: UDP server handling is more complex because you typically don't create a new socket per client
 				// For simplicity, we'll omit UDP server implementation here

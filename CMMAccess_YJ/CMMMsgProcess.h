@@ -54,7 +54,7 @@ namespace CMM
 	public:
 		MsgProcess();
 		int OnMsgProcess(char * msg, char *response, int size);
-		int OnMsgProcess_Error(char* msg, char* response, int size);
+		int OnMsgProcess_Error(char* msg, char* returnBuf, int size, int enumResult,std::string errmsg = "");
 	private:
 		int DoRequest(ISFIT::CXmlElement& element, char* returnBuf, int size);
 		int DoResponse(ISFIT::CXmlElement& element);

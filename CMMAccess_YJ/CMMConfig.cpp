@@ -72,8 +72,13 @@ namespace CMM{
 		m_DevCfgFileName += "_" + CMMParam::instance()->m_FsuId + ".xml";
 		LogInfo("dev cfg file name" << m_DevCfgFileName.c_str());
 		//启用或重启都应该重新读列表
-		CreateConfigFile();
+		m_pDeviceConfig = new CMMDeviceConfig();
+		if (!m_pDeviceConfig)
+		{
+			return -1;
+		}
 		m_pDeviceConfig->Init();
+		CreateConfigFile();
 		return 0;
 	}
 

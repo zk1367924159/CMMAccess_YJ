@@ -132,7 +132,7 @@ namespace CMM
 		std::string serverAddress = uri.getHost();
 		int serverPort = uri.getPort();
 		LogInfo("SEND data to serverAddress " << serverAddress << " and serverPort:" << serverPort);
-		if (protocolType == "UDP")
+		if (protocolType == "udp")
 		{
 			try
 			{
@@ -154,7 +154,7 @@ namespace CMM
 				return -1;
 			}
 		}
-		else if (protocolType == "TCP")
+		else if (protocolType == "tcp")
 		{
 			try
 			{
@@ -186,7 +186,7 @@ namespace CMM
 		std::string serverAddress = uri.getHost();
 		int serverPort = uri.getPort();
 		LogInfo("SEND data to serverAddress " << serverAddress << " and serverPort:" << serverPort);
-		if (protocolType == "UDP")
+		if (protocolType == "udp")
 		{
 			try
 			{
@@ -208,7 +208,7 @@ namespace CMM
 				return -1;
 			}
 		}
-		else if (protocolType == "TCP")
+		else if (protocolType == "tcp")
 		{
 			try
 			{

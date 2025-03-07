@@ -113,23 +113,55 @@ namespace CMM
 		return -1;		
 	}
 
-	int MsgProcess::OnMsgProcess_Error(char* msg,char* returnBuf, int size)
+	int MsgProcess::OnMsgProcess_Error(char* msg, char* returnBuf, int size, int enumResult,std::string errmsg)
 	{
-		/*ISFIT::CXmlDoc doc;
+		ISFIT::CXmlDoc doc;
 		if (doc.Parse(msg) < 0)
 		{
 			return -1;
 		}
+		CMMResponse response(returnBuf, size);
+		
 		ISFIT::CXmlElement element = doc.GetElement(CMM::Request);
 		if (element != NULL)
-		{*/
-		CMMRequset request;
-		//request.Decode(element);
-		//CData method = request.GetMethod();
-		CMMResponse response(returnBuf, size);
-		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::AUTHERROR, "failed verify to Authorization", "CHECK_TOKEN");
-		response.SetResponseXml(rsp);
+		{
+			CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::UNCONFIG, "SC未配置", "");
+			response.SetResponseXml(rsp);
+			return 0;
+		}
+		response.Decode(element);
+		CData resAck = response.GetMethod() + "_ACK";
+		if (enumResult == 0)
+		{
+			CData rsp;
+			if (errmsg == "")
+			{
+				rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, "其他失败原因", resAck);
+			}
+			else
+			{
+				rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, errmsg.c_str(), resAck);
+			}
+			response.SetResponseXml(rsp);
+		}
+		else if (enumResult == 2)
+		{
+			CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::ILLEGALACCESS, "未授权非法访问",resAck);
+			response.SetResponseXml(rsp);
+		}
+		else if (enumResult == 3)
+		{
+			CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::AUTHERROR, "报文认证失败",resAck);
+			response.SetResponseXml(rsp);
+		}
+		else if (enumResult == 4)
+		{
+			CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::NODATA, "无数据",resAck);
+			response.SetResponseXml(rsp);
+		}
+
 		LogInfo("=====>> response : " << returnBuf);
+
 		return 1;
 	}
 
@@ -879,13 +911,13 @@ namespace CMM
 	{
 		ISFIT::CXmlElement info = request.GetInfoNode();
 		CData interval = info.GetSubElement("Interval").GetElementText().convertString();	
-		CMMAccess::instance()->UpdateInterval(interval);
+		CMMParam::instance()->UpdateParam (CData(CMM::param::UpdateInterval),interval);
+		CMMParam::instance()->writeJson2File();
 		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS,"NULL", CMM::method::UPDATE_FSUINFO_INTERVAL_ACK);
 		response.SetResponseXml(rsp);
 		return 0;
 	}
 
-	
 	//canyon add
 	int MsgProcess::OnGetStorageRule( CMMMsg& request, CMMMsg & response )
 	{

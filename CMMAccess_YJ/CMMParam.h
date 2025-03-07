@@ -16,20 +16,27 @@ namespace CMM{
 		void initParam();
 		bool writeJson2File();
 		void initJsonFile();
-		json& GetJsonObj();
-		void SetJsonObj(json& jsonObj);
+		std::string LoadParams();
+		void SavaParams(std::string content);
 		int UpdateParam(CData key, CData val);
 		CData GetParam(CData key, CData defVal = "");
 		int SetParam(CData key, CData val);
+	private:
+		CData GetLogLevel(CData level);
 	public:
 		static CMMParam *_instance;
 		json m_json;
+		CData m_AlarmSendDB;
+		CData m_LoggerChannel;
+		CData m_FlowControl;
+		CData m_FsuDeviceId;
+
         CData m_CsvEncoding;  //csv编码 GBK UTF
         CData m_CsvExpire;    //csv过期时间 (天)
         CData m_CsvMeasurementTime; //csv上报周期 分钟
-        CData m_ScIp;   // 门禁服务IP
-        CData m_ScPort; // 门禁服务端口
-        CData m_ScUdpPort; // 门禁透传端口
+		CData m_ScDoorIp; // 门禁服务IP
+		CData m_ScDoorPort; // 门禁服务端口
+		CData m_ScDoorTransPort; // 门禁透传端口
         CData m_ScProtocol; // 门禁透传协议 TCP/UDP
         CData m_AuthEnable; //是否开启SC服务认证
         CData m_EnginState;  //启用工程状态（禁止上报告警）
@@ -46,6 +53,8 @@ namespace CMM{
         CData m_FtpType;       // FTP/SFTP
         CData m_LogFileSize;
         CData m_LogLevel;
+		CData m_LoggerCount;
+
         CData m_LoginPeriod;   //登陆周期（注册失败重试时间 s）
 		CData m_LoginHeart;    //登录心跳
         CData m_Algorithm;     //密码算法: 
@@ -55,7 +64,7 @@ namespace CMM{
         CData m_SendPeriod;    //配置上报周期(分钟):
         CData m_UpdateInterval;  //FSU信息更新周期(秒):
         
-        CData m_WebDevicedDB;
+        CData m_WebDeviceConfig;
         CData m_WebQueueDepth;
         CData m_WebInterval;
         CData m_WebHost;   //WEBAPI 主机IP
@@ -76,7 +85,7 @@ namespace CMM{
         CData m_StopBit;
         CData m_SlaveID;
 
-		CData m_scUdpPoint;
+		CData m_ScUdpPoint;
 	};
 }
 #endif

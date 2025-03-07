@@ -31,11 +31,11 @@ namespace CMM{
 		const char* const AlarmSendDB = "alarm-sent-status-db"; //告警发送状态数据库
 		const char* const CsvEncoding = "csv-character-encoding";  //csv编码
 		const char* const CsvExpire = "csv-expire-period";  //csv过期时间
-		const char* const CsvMeasurementTime = "csv-measurement-period";  //csv上报周期
+		const char* const CsvMeasurementTime = "csv-measurement-period";  // AI历史存储周期(分钟): csv上报周期
 
-		const char* const SCIp = "door-server-ip";
-		const char* const SCPort = "door-server-port";
-		const char* const SCUdpPort = "door-trans-port";
+		const char* const SCDoorIp = "door-server-ip";
+		const char* const SCDoorPort = "door-server-port";
+		const char* const SCDoorTransPort = "door-trans-port";
 		const char* const SCProtocol = "door-trans-protocol";
 
 		const char* const AuthEnable = "enable-auth";             //身份认证
@@ -47,7 +47,7 @@ namespace CMM{
 		const char* const RebootEnable = "fsu-auto-reboot-enable";  //自动重启开关	
 		const char* const RebootPeriod = "fsu-auto-reboot-period";  //自动重启周期（天）
 		const char* const RebootTime = "fsu-auto-reboot-time";      //重启具体时间
-		//const char* const fsuDeviceId = "fsu-device-id";
+		const char* const FsuDeviceId = "fsu-device-id";
 		const char* const FsuId  = "fsu-id";             //FSU ID:
 		const char* const FsuEndPoint = "fsu-webservice-url";           //fsu 服务端URL http://192.168.1.168:8080/v1/services/newFSUService"
 
@@ -55,8 +55,8 @@ namespace CMM{
 		const char* const FtpPasswd = "ftp-pass";
 		const char* const FtpType = "ftp-type";
 
-		//const char* const LoggerChannel = "logger-channel";
-		//const char* const LoggerCount = "logger-file-count";
+		const char* const LoggerChannel = "logger-channel";
+		const char* const LoggerCount = "logger-file-count";
 		const char* const LogFileSize = "logger-file-size";   // 日志大小(Mb);
 		const char* const LogLevel = "logger-level";        //"日志级别";
 
@@ -71,7 +71,7 @@ namespace CMM{
 		const char* const SendPeriod = "send-conf-period";          //配置上报周期(s)";
 		const char* const UpdateInterval = "update-fsuinfo-interval";   // FSU信息更新周期(秒):
 		
-		const char* const WebDevicedDB = "/userdata/db/web-api-device-props.sqlite";    //Web API设备厂家信息数据库:
+		const char* const WebDeviceConfig = "web-api-device-config";  //Web API设备厂家信息数据库:web-api-device-props-db
 		const char* const WebQueueDepth = "web-api-event-queue-depth";    //	Web API请求队列深度
 		const char* const WebInterval = "web-api-event-time-interval";    //	Web API事件检查周期(秒):
 		const char* const WebHost = "web-api-host";    //Web API主机/IP:

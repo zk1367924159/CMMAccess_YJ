@@ -9,8 +9,10 @@
 #include "Poco/DateTimeFormatter.h"  
 #include "Poco/DateTime.h" 
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
-
-#define  CMM_PARAM_CONFIG  "appdata/config/MobileBConfig.json"
+#include "Poco/File.h"
+#include "Poco/FileStream.h"
+#include "Poco/StreamCopier.h"
+#define  CMM_PARAM_CONFIG  "/appdata/config/MobileBConfig.json"
 namespace CMM{
 	CMMParam* CMMParam::_instance = NULL;
 
@@ -25,12 +27,17 @@ namespace CMM{
 
 	void CMMParam::initParam()
 	{
-		m_CsvEncoding = GetParam(CMM::param::CsvEncoding, "");
+		/*m_AlarmSendDB =  GetParam(CMM::param::AlarmSendDB, "");
+		m_LoggerChannel =  GetParam(CMM::param::LoggerChannel, "");
+		m_FlowControl =  GetParam(CMM::param::FlowControl, "");*/
+		m_FsuDeviceId =  GetParam(CMM::param::FsuDeviceId, "");
+
+		//m_CsvEncoding = GetParam(CMM::param::CsvEncoding, "");
 		m_CsvExpire = GetParam(CMM::param::CsvExpire, "");
 		m_CsvMeasurementTime = GetParam(CMM::param::CsvMeasurementTime, "");
-		m_ScIp = GetParam(CMM::param::SCIp, "");
-		m_ScPort = GetParam(CMM::param::SCPort, "");
-		m_ScUdpPort = GetParam(CMM::param::SCUdpPort, "");
+		m_ScDoorIp = GetParam(CMM::param::SCDoorIp, "");
+		m_ScDoorPort = GetParam(CMM::param::SCDoorPort, "");
+		m_ScDoorTransPort = GetParam(CMM::param::SCDoorTransPort, "");
 		m_ScProtocol = GetParam(CMM::param::SCProtocol, "");
 		m_AuthEnable = GetParam(CMM::param::AuthEnable, "");
 		m_EnginState = GetParam(CMM::param::EnginState, "");
@@ -46,6 +53,8 @@ namespace CMM{
 		m_FtpType = GetParam(CMM::param::FtpType, "");
 		m_LogFileSize = GetParam(CMM::param::LogFileSize, "");
 		m_LogLevel = GetParam(CMM::param::LogLevel, "");
+		m_LoggerCount = GetParam(CMM::param::LoggerCount, "");
+
 		m_LoginPeriod = GetParam(CMM::param::LoginPeriod, "");
 		m_Algorithm = GetParam(CMM::param::Algorithm, "");
 		m_Password = GetParam(CMM::param::Password, "");
@@ -54,14 +63,14 @@ namespace CMM{
 		m_SendPeriod = GetParam(CMM::param::SendPeriod, "");
 		m_UpdateInterval = GetParam(CMM::param::UpdateInterval, "");
 
-		//m_webDeviceDB = GetParam(CMM::param::WebDevicedDB, "");
-		//m_webQueueDepth = GetParam(CMM::param::WebQueueDepth, "");
-		m_WebInterval = GetParam(CMM::param::WebInterval, "");
+		m_WebDeviceConfig = GetParam(CMM::param::WebDeviceConfig, "");
+		//m_WebQueueDepth = GetParam(CMM::param::WebQueueDepth, "");
+		//m_WebInterval = GetParam(CMM::param::WebInterval, "");
 		m_WebHost = GetParam(CMM::param::WebHost, "");
-		m_WebHtdocs = GetParam(CMM::param::WebHtdocs, "");
-		m_WebMimes = GetParam(CMM::param::WebMimes, "");
+		//m_WebHtdocs = GetParam(CMM::param::WebHtdocs, "");
+		//m_WebMimes = GetParam(CMM::param::WebMimes, "");
 		m_WebPort = GetParam(CMM::param::WebPort, "");
-		m_WebStorageDevice = GetParam(CMM::param::WebStorageDevice, "");
+		//m_WebStorageDevice = GetParam(CMM::param::WebStorageDevice, "");
 		m_WebVersion = GetParam(CMM::param::WebVersion, "");
 
 		m_SiteID = GetParam(CMM::param::SiteID, "");
@@ -75,17 +84,22 @@ namespace CMM{
 		m_StopBit = GetParam(CMM::param::StopBit, "");
 		m_SlaveID = GetParam(CMM::param::SlaveID, "");
 
-		m_scUdpPoint = m_ScProtocol+ "://"+ m_ScIp + ":"+ m_ScPort + "/v1/services/newLSCService";//LSCService
+		m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
 	}
 
 	void CMMParam::initJsonFile()
 	{
-        m_json[CMM::param::CsvEncoding] = m_CsvEncoding.c_str();
+		/*m_json[CMM::param::AlarmSendDB] = m_AlarmSendDB.c_str();
+		m_json[CMM::param::LoggerChannel] = m_LoggerChannel.c_str();
+		m_json[CMM::param::FlowControl] = m_FlowControl.c_str();*/
+		m_json[CMM::param::FsuDeviceId] = m_FsuDeviceId.c_str();
+
+        //m_json[CMM::param::CsvEncoding] = m_CsvEncoding.c_str();
         m_json[CMM::param::CsvExpire] = m_CsvExpire.c_str();
         m_json[CMM::param::CsvMeasurementTime] = m_CsvMeasurementTime.c_str();
-        m_json[CMM::param::SCIp] = m_ScIp.c_str();
-        m_json[CMM::param::SCPort] = m_ScPort.c_str();
-        m_json[CMM::param::SCUdpPort] = m_ScUdpPort.c_str();
+        m_json[CMM::param::SCDoorIp] = m_ScDoorIp.c_str();
+        m_json[CMM::param::SCDoorPort] = m_ScDoorPort.c_str();
+        m_json[CMM::param::SCDoorTransPort] = m_ScDoorTransPort.c_str();
         m_json[CMM::param::SCProtocol] = m_ScProtocol.c_str();
         m_json[CMM::param::AuthEnable] = m_AuthEnable.c_str();
         m_json[CMM::param::EnginState] = m_EnginState.c_str();
@@ -102,6 +116,8 @@ namespace CMM{
         m_json[CMM::param::FtpType] = m_FtpType.c_str();
         m_json[CMM::param::LogFileSize] = m_LogFileSize.c_str();
         m_json[CMM::param::LogLevel] = m_LogLevel.c_str();
+		//m_json[CMM::param::LoggerCount] = m_LoggerCount.c_str();
+
         m_json[CMM::param::LoginPeriod] = m_LoginPeriod.c_str();
         m_json[CMM::param::Algorithm] = m_Algorithm.c_str();
         m_json[CMM::param::Password] = m_Password.c_str();
@@ -110,14 +126,14 @@ namespace CMM{
         m_json[CMM::param::SendPeriod] = m_SendPeriod.c_str();
         m_json[CMM::param::UpdateInterval] = m_UpdateInterval.c_str();
         
-        m_json[CMM::param::WebDevicedDB] = m_WebDevicedDB.c_str();
-        m_json[CMM::param::WebQueueDepth] = m_WebQueueDepth.c_str();
-        m_json[CMM::param::WebInterval] = m_WebInterval.c_str();
+        m_json[CMM::param::WebDeviceConfig] = m_WebDeviceConfig.c_str();
+        //m_json[CMM::param::WebQueueDepth] = m_WebQueueDepth.c_str();
+        //m_json[CMM::param::WebInterval] = m_WebInterval.c_str();
         m_json[CMM::param::WebHost] = m_WebHost.c_str();
-        m_json[CMM::param::WebHtdocs] = m_WebHtdocs.c_str();
-        m_json[CMM::param::WebMimes] = m_WebMimes.c_str();
+        //m_json[CMM::param::WebHtdocs] = m_WebHtdocs.c_str();
+        //m_json[CMM::param::WebMimes] = m_WebMimes.c_str();
         m_json[CMM::param::WebPort] = m_WebPort.c_str();
-        m_json[CMM::param::WebStorageDevice] = m_WebStorageDevice.c_str();
+       // m_json[CMM::param::WebStorageDevice] = m_WebStorageDevice.c_str();
         m_json[CMM::param::WebVersion] = m_WebVersion.c_str();
         
         m_json[CMM::param::SiteID] = m_SiteID.c_str();
@@ -132,16 +148,43 @@ namespace CMM{
         m_json[CMM::param::SlaveID] = m_SlaveID.c_str();
 
 	}
-
 	bool CMMParam::writeJson2File()
 	{
-		std::ofstream file(CMM_PARAM_CONFIG);
-		if (!file.is_open()) 
+		LogInfo("writeJson2File");
+		const std::string filePath = CMM_PARAM_CONFIG; // 确保 CMM_PARAM_CONFIG 是一个有效的文件路径字符串
+
+		// 使用 ofstream 打开文件，如果文件不存在则创建，如果已存在则覆盖
+		std::ofstream ofs(filePath, std::ios::out | std::ios::trunc); // std::ios::trunc 表示截断文件，即覆盖内容
+		if (!ofs)
 		{
-			LogError("Could not open file: " << CMM_PARAM_CONFIG);
+			// 如果文件无法打开（可能是由于权限问题或其他原因），则记录错误并返回 false
+			LogError("Could not open file for writing: " << filePath);
 			return false;
 		}
-		file << m_json.dump(4); // Write JSON with indent of 4 spaces
+
+		try
+		{
+			// 将 JSON 数据写入文件
+			ofs << m_json.dump(2);
+			ofs.flush(); // 确保数据被写入文件
+
+			// 如果需要，可以在这里记录成功写入的信息
+			// LogInfo("Successfully wrote JSON data to file: " << filePath);
+		}
+		catch (const Poco::Exception& ex)
+		{
+			// 捕获 Poco 异常并记录错误信息
+			LogError("Error writing file: " << ex.displayText());
+			return false;
+		}
+		catch (const std::exception& ex)
+		{
+			// 捕获标准库异常并记录错误信息
+			LogError("Standard exception while writing file: " << ex.what());
+			return false;
+		}
+
+		// 如果代码执行到这里，说明文件已成功写入
 		return true;
 	}
 
@@ -152,15 +195,46 @@ namespace CMM{
 		return writeJson2File();
 	}
 
-	json& CMMParam::GetJsonObj()
+	std::string CMMParam::LoadParams()
 	{
-		return m_json;
+		return m_json.dump(2);
 	}
 
-	void CMMParam::SetJsonObj(json& jsonObj)
+	void CMMParam::SavaParams(std::string content)
 	{
-		m_json = jsonObj;
-		writeJson2File();
+		try
+		{
+			json tempJson = json::parse(content);
+
+			for (auto it = tempJson.begin(); it != tempJson.end(); ++it)
+			{
+				std::string key = it.key();
+				json value = it.value();
+				if (value.is_null())
+				{
+					LogInfo("this key is null. " << key);
+					UpdateParam(key.c_str(),"");
+					continue;
+				}
+				if (!value.is_string())
+				{
+					LogInfo("this key is: " << key);
+					continue;
+				}
+				std::string val = value.get<std::string>();
+				LogInfo("key : " << key <<  "val: " << val);
+				if (m_json[key].get<std::string>() != val)
+				{
+					UpdateParam(key.c_str(), val.c_str());
+				}
+			}
+			writeJson2File();
+		}
+		catch (const std::exception& e)
+		{
+			LogError("exception: " << e.what());
+		}
+
 	}
 
 	int CMMParam::UpdateParam(CData key, CData val)
@@ -180,29 +254,29 @@ namespace CMM{
 			m_CsvMeasurementTime = val.c_str();
 			m_json[CMM::param::CsvMeasurementTime] = m_CsvMeasurementTime.c_str();
 		}
-		else if (key == CMM::param::SCIp)
+		else if (key == CMM::param::SCDoorIp)
 		{
-			m_ScIp = val.c_str();
-			m_json[CMM::param::SCIp] = m_ScIp.c_str();
-			m_scUdpPoint = m_ScProtocol+ "://"+ m_ScIp + ":"+ m_ScPort + "/v1/services/newLSCService";//LSCService
+			m_ScDoorIp = val.c_str();
+			m_json[CMM::param::SCDoorIp] = m_ScDoorIp.c_str();
+			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
 
 		}
-		else if (key == CMM::param::SCPort)
+		else if (key == CMM::param::SCDoorPort)
 		{
-			m_ScPort = val.c_str();
-			m_json[CMM::param::SCPort] = m_ScPort.c_str();
-			m_scUdpPoint = m_ScProtocol+ "://"+ m_ScIp + ":"+ m_ScPort + "/v1/services/newLSCService";//LSCService
+			m_ScDoorPort = val.c_str();
+			m_json[CMM::param::SCDoorPort] = m_ScDoorPort.c_str();
+			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
 		}
-		else if (key == CMM::param::SCUdpPort)
+		else if (key == CMM::param::SCDoorTransPort)
 		{
-			m_ScUdpPort = val.c_str();
-			m_json[CMM::param::SCUdpPort] = m_ScUdpPort.c_str();
+			m_ScDoorTransPort = val.c_str();
+			m_json[CMM::param::SCDoorTransPort] = m_ScDoorTransPort.c_str();
 		}
 		else if (key == CMM::param::SCProtocol)
 		{
 			m_ScProtocol = val.c_str();
 			m_json[CMM::param::SCProtocol] = m_ScProtocol.c_str();
-			m_scUdpPoint = m_ScProtocol+ "://"+ m_ScIp + ":"+ m_ScPort + "/v1/services/newLSCService";//LSCService
+			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
 
 		}
 		else if (key == CMM::param::AuthEnable)
@@ -274,6 +348,7 @@ namespace CMM{
 		{
 			m_LogLevel = val.c_str();
 			m_json[CMM::param::LogLevel] = m_LogLevel.c_str();
+			APPAPI::SetLogLevel(GetLogLevel(val));
 		}
 		else if (key == CMM::param::LoginPeriod)
 		{
@@ -311,16 +386,16 @@ namespace CMM{
 			m_json[CMM::param::UpdateInterval] = m_UpdateInterval.c_str();
 		}
 
-		else if (key == CMM::param::WebDevicedDB)
+		else if (key == CMM::param::WebDeviceConfig)
 		{
-			m_WebDevicedDB = val.c_str();
-			m_json[CMM::param::WebDevicedDB] = m_WebDevicedDB.c_str();
+			m_WebDeviceConfig = val.c_str();
+			m_json[CMM::param::WebDeviceConfig] = m_WebDeviceConfig.c_str();
 		}
-		else if (key == CMM::param::WebQueueDepth)
+		/*else if (key == CMM::param::WebQueueDepth)
 		{
 			m_WebQueueDepth = val.c_str();
 			m_json[CMM::param::WebQueueDepth] = m_WebQueueDepth.c_str();
-		}
+		}*/
 		else if (key == CMM::param::WebInterval)
 		{
 			m_WebInterval = val.c_str();
@@ -331,7 +406,7 @@ namespace CMM{
 			m_WebHost = val.c_str();
 			m_json[CMM::param::WebHost] = m_WebHost.c_str();
 		}
-		else if (key == CMM::param::WebHtdocs)
+		/*else if (key == CMM::param::WebHtdocs)
 		{
 			m_WebHtdocs = val.c_str();
 			m_json[CMM::param::WebHtdocs] = m_WebHtdocs.c_str();
@@ -340,17 +415,17 @@ namespace CMM{
 		{
 			m_WebMimes = val.c_str();
 			m_json[CMM::param::WebMimes] = m_WebMimes.c_str();
-		}
+		}*/
 		else if (key == CMM::param::WebPort)
 		{
 			m_WebPort = val.c_str();
 			m_json[CMM::param::WebPort] = m_WebPort.c_str();
 		}
-		else if (key == CMM::param::WebStorageDevice)
+		/*else if (key == CMM::param::WebStorageDevice)
 		{
 			m_WebStorageDevice = val.c_str();
 			m_json[CMM::param::WebStorageDevice] = m_WebStorageDevice.c_str();
-		}
+		}*/
 		else if (key == CMM::param::WebVersion)
 		{
 			m_WebVersion = val.c_str();
@@ -430,5 +505,29 @@ namespace CMM{
 			return 0;
 		}
 		return -1;
+	}
+
+	CData CMMParam::GetLogLevel(CData value)
+	{
+		int level = value.convertInt();
+		switch (level)
+		{
+		case 1:
+			return "fatal";
+		case 2:
+			return "critical";
+		case 3:
+			return "warning";
+		case 4:
+			return "notice";
+		case 5:
+			return "information";
+		case 6:
+			return "debug";
+		case 7:
+			return "trace";
+		default:
+			return "information";
+		}
 	}
 }
