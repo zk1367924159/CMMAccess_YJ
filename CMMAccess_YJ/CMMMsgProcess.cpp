@@ -7,7 +7,7 @@
 #include "CMMMeteTranslate.h"
 #include "SysCommon.h"
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
-
+//#include "ExtSoApi.h"
 //#include "../../NetComm/FSUUtil.h"
 
 namespace CMM
@@ -116,15 +116,15 @@ namespace CMM
 	int MsgProcess::OnMsgProcess_Error(char* msg, char* returnBuf, int size, int enumResult,std::string errmsg)
 	{
 		ISFIT::CXmlDoc doc;
-		if (doc.Parse(msg) < 0)
+		if(doc.Parse(msg) < 0)
 		{
 			return -1;
 		}
-		CMMResponse response(returnBuf, size);
-		
 		ISFIT::CXmlElement element = doc.GetElement(CMM::Request);
-		if (element != NULL)
+		CMMResponse response(returnBuf, size);
+		if (element == NULL)
 		{
+			LogError("this is error xml to find request: " << msg);
 			CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::UNCONFIG, "SC未配置", "");
 			response.SetResponseXml(rsp);
 			return 0;
@@ -161,7 +161,6 @@ namespace CMM
 		}
 
 		LogInfo("=====>> response : " << returnBuf);
-
 		return 1;
 	}
 
@@ -195,6 +194,8 @@ namespace CMM
 		m_msgMap[CMM::method::GET_TIME] = &MsgProcess::OnGetTime;
 		m_msgMap[CMM::method::SET_ACCEPT_IP_CONF] = &MsgProcess::OnSetAcceptIP;
 		m_msgMap[CMM::method::SET_FSUREBOOT] = &MsgProcess::OnSetFsuReboot;
+
+		m_msgMap[CMM::method::LOGIN] = &MsgProcess::OnLogin;
 	}
 
 	int MsgProcess::DoRequest(ISFIT::CXmlElement& element, char* returnBuf, int size)
@@ -392,7 +393,7 @@ namespace CMM
 				std::list<TSemaphore>& reqMeterIdList = it->second;
 				if (reqMeterIdList.size() > 0)
 				{	
-					TDevConf cfg = {0};
+					TDevConf cfg = { };
 					int signalNum=1;
 					if(CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
 					{
@@ -496,7 +497,7 @@ namespace CMM
 	int MsgProcess::OnTimeCheck( CMMMsg& request, CMMMsg & response )
 	{
 		ISFIT::CXmlElement info = request.GetInfoNode();
-		TTime time = {0};
+		TTime time = { };
 		CProtocolDecode::DecodeTimeCheck(info, time);
 		//Poco::DateTime dateTime(time.Years, time.Month, time.Day, time.Hour, time.Minute, time.Second);
 		//CData localTime(DateTimeFormatter::format(dateTime, DateTimeFormat::SORTABLE_FORMAT));
@@ -685,7 +686,7 @@ namespace CMM
 				if (reqMeterIdList.size() > 0)
 				{
 					//获取
-					TDevConf cfg = { 0 };
+					TDevConf cfg = {  };
 					if (CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
 					{
 						LogError("get dev config failed id:" << devId);
@@ -861,8 +862,8 @@ namespace CMM
 		CData user = info.GetSubElement("UserName").GetElementText().convertString();
 		CData password = info.GetSubElement("PassWord").GetElementText().convertString();
 	
-		CMMAccess::instance()->AddLinuxSysUser(user, "", "/");
-		int ret= CMMAccess::instance()->ModifyLinuxSysPasswd(user, password);
+		CMMParam::instance()->AddLinuxSysUser(user,password, "/");
+		int ret= CMMParam::instance()->ModifyLinuxSysPasswd(user, password);
 		CData rsp ;
 		if(ret==0)
 		{
@@ -912,7 +913,7 @@ namespace CMM
 		ISFIT::CXmlElement info = request.GetInfoNode();
 		CData interval = info.GetSubElement("Interval").GetElementText().convertString();	
 		CMMParam::instance()->UpdateParam (CData(CMM::param::UpdateInterval),interval);
-		CMMParam::instance()->writeJson2File();
+		//CMMParam::instance()->writeJson2File();
 		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS,"NULL", CMM::method::UPDATE_FSUINFO_INTERVAL_ACK);
 		response.SetResponseXml(rsp);
 		return 0;
@@ -994,7 +995,7 @@ namespace CMM
 				LogInfo("reqMeterIdList size :" << reqMeterIdList.size());
 				if (reqMeterIdList.size() > 0)
 				{
-					TDevConf cfg = { 0 };
+					TDevConf cfg = {  };
 					if (CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
 					{
 						LogError("get dev config failed id:"<<devId);
@@ -1207,6 +1208,13 @@ namespace CMM
 		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_FSUREBOOT_ACK);
 		response.SetResponseXml(rsp);
 		APPAPI::RebootSys();
+		return 0;
+	}
+
+	int MsgProcess::OnLogin(CMMMsg& request, CMMMsg& response)
+	{
+		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::LOGIN_ACK);
+		response.SetResponseXml(rsp);
 		return 0;
 	}
 }

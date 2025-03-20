@@ -4,6 +4,7 @@
 #include "CMMAccess.h"
 #include "CMMParam.h"
 #include "../../ExtAppIpc/ExtAppMain.hpp"
+//#include "ExtSo.hpp"
 
 
 CData ExtAppVersion()
@@ -28,8 +29,8 @@ int ExtAppUpdateParam(std::map<CData, CData>& paramMap,std::map<CData,CData>& er
             CMMParam::instance()->UpdateParam(parameter.first, parameter.second);
         }
     }
-	if(isUpdate)
-		CMMParam::instance()->writeJson2File();
+	/*if(isUpdate)
+		CMMParam::instance()->writeJson2File();*/
 	return 0;
 }
 
@@ -78,6 +79,7 @@ int ExtAppMain(int argc, char* argv[])
 	ISFIT::CLog::Instance().init(config);
 	
 	CMM::CMMAccess::instance()->start();
+
 	while(1)
 	{
 		Poco::Thread::sleep(100);
@@ -85,6 +87,10 @@ int ExtAppMain(int argc, char* argv[])
 	return 0;
 }
 
+void moduleStop()
+{
+	CMM::CMMAccess::instance()->stop();
+}
 
 
 

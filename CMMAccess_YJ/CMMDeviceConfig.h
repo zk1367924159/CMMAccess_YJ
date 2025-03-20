@@ -59,6 +59,12 @@ namespace CMM{
 		* http响应json
 		*/
 		std::string DecodeResponseJson(int nType);
+
+
+		/*
+		* 获取当前网关 所有设备的主子设备关系
+		*/
+		bool parseDevList(std::string& jsonData, std::map<std::string, std::list<std::string>>& devList);
 	
 	};
 }

@@ -45,6 +45,7 @@ class CHTTPRequestHandler : public HTTPRequestHandler
 		virtual ~CHTTPRequestHandler();
 			
 		void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response);
+		void handleTestRequest(HTTPServerRequest& request, HTTPServerResponse& response);
 	private:
 		void* m_owner;
 };

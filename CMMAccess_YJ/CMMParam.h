@@ -12,6 +12,9 @@ namespace CMM{
 	
 	public:
 		static CMMParam* instance();
+		int AddLinuxSysUser(CData user, CData passwd, CData dir);
+		int DelLinuxSysUser(CData user);
+		int ModifyLinuxSysPasswd(CData user, CData passwd);
 		bool Init();
 		void initParam();
 		bool writeJson2File();
@@ -21,6 +24,7 @@ namespace CMM{
 		int UpdateParam(CData key, CData val);
 		CData GetParam(CData key, CData defVal = "");
 		int SetParam(CData key, CData val);
+		
 	private:
 		CData GetLogLevel(CData level);
 	public:

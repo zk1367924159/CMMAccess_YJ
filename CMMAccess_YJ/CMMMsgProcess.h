@@ -80,6 +80,9 @@ namespace CMM
 		int OnGetTime(CMMMsg& request, CMMMsg& response);
 		int OnSetAcceptIP(CMMMsg& request, CMMMsg& response);
 		int OnSetFsuReboot(CMMMsg& request, CMMMsg& response);
+
+		int OnLogin(CMMMsg& request, CMMMsg& response);
+		
 	private:
 		bool ThresholdIdFilter(std::map<CData,CData>& attr);
 	};

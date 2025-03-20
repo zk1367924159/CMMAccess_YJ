@@ -2,7 +2,7 @@
 #include <iomanip>  
 #include <fstream>  
 #include <algorithm>  
-
+#include "CMMAccess.h"
 #include "CMMDeviceConfig.h"
 #include "CLog.h"
 #include "CMMConfig.h"
@@ -17,7 +17,7 @@
 #include "../../Common/ShareFile.h"
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
 #include "../../ExtAppIpc/ExtAppIpcStruct.h"
-
+//#include "ExtSoApi.h"
 
 #define  CMM_DEVICE_CONFIG  "/Config/devices"
 //#define  CMM_DEVICE_CONFIG  "/userdata/Config/devices"
@@ -25,14 +25,14 @@
 #define  CMM_TEMPLATES_XML "/appdata/config/templates.xml"
 namespace CMM{
 
-	CMMConfig * CMMConfig::_instance = NULL;
+	CMMConfig* CMMConfig::_instance = NULL;
 
-	std::vector<std::string> extractValues(const std::string& input) 
+	std::vector<std::string> extractValues(const std::string& input)
 	{
 		std::vector<std::string> values;
 		std::istringstream iss(input);
 		std::string value;
-		while (std::getline(iss, value, ',')) 
+		while (std::getline(iss, value, ','))
 		{
 			// 移除可能的空白字符（如果有的话）  
 			value.erase(std::remove_if(value.begin(), value.end(), isspace), value.end());
@@ -42,7 +42,7 @@ namespace CMM{
 	}
 
 	// 使用初始化列表的示例  
-	bool areVectorsEqualSize(std::initializer_list<const std::vector<std::string>*> vecs) 
+	bool areVectorsEqualSize(std::initializer_list<const std::vector<std::string>*> vecs)
 	{
 		if (vecs.size() == 0) return true; // 空列表，认为所有vector大小相等  
 
@@ -57,7 +57,7 @@ namespace CMM{
 
 	CMMConfig* CMMConfig::instance()
 	{
-		if(_instance == NULL)
+		if (_instance == NULL)
 		{
 			_instance = new CMMConfig();
 		}
@@ -100,11 +100,11 @@ namespace CMM{
 			ISFIT::CXmlElement temElement = templates.GetSubElement("template", nIndex++);
 			while (temElement != NULL)
 			{
-				
+
 				CData strPlatFrom = temElement.GetAttribute("platform");
-			/*	LogInfo("strPlatFrom : " << strPlatFrom.c_str());*/
+				/*	LogInfo("strPlatFrom : " << strPlatFrom.c_str());*/
 				if (strPlatFrom.compare("cmm") == 0)
-				//if (strPlatFrom.compare("cmm") == 0)
+					//if (strPlatFrom.compare("cmm") == 0)
 				{
 					ISFIT::CXmlElement metes = temElement.GetSubElement("metes");
 					if (metes != NULL)
@@ -148,8 +148,8 @@ namespace CMM{
 		prefix += signalId;
 		return prefix;
 	}
-	
-	std::map<CData, TDevConf> &CMMConfig::GetDevices()
+
+	std::map<CData, TDevConf>& CMMConfig::GetDevices()
 	{
 		//防止另外一个地方在修改m_devCfg
 		//FastMutex::ScopedLock lock(m_devCfgMutex);//
@@ -163,9 +163,9 @@ namespace CMM{
 		std::map <CData, int> dev2MeterList;
 		APPAPI::GetDevId("alias", devIdList);
 
-		int curSize=devIdList.size();
-		int size=m_devIdList.size();
-		bool bUpdate=false;
+		int curSize = devIdList.size();
+		int size = m_devIdList.size();
+		bool bUpdate = false;
 		std::list<CData>::iterator its = devIdList.begin();
 		while (its != devIdList.end())
 		{
@@ -177,22 +177,22 @@ namespace CMM{
 			dev2MeterList[devID] = infoList.size();
 			its++;
 		}
-		
-		
-		if(curSize!=size)
+
+
+		if (curSize != size)
 		{
-			bUpdate=true;
+			bUpdate = true;
 		}
 		else
 		{
 			//比对内容是否一样
-			std::list<CData>::iterator it=devIdList.begin();
-			while(it!=devIdList.end())
+			std::list<CData>::iterator it = devIdList.begin();
+			while (it != devIdList.end())
 			{
 				CData devID = *it;
-				if(std::find(m_devIdList.begin(),m_devIdList.end(), devID.c_str()) == m_devIdList.end())//没查找到，说明有更新
+				if (std::find(m_devIdList.begin(), m_devIdList.end(), devID.c_str()) == m_devIdList.end())//没查找到，说明有更新
 				{
-					bUpdate=true;
+					bUpdate = true;
 					break;
 				}
 				else          //查到 但是再检测 量数量 是否一致
@@ -201,29 +201,29 @@ namespace CMM{
 					int beforeSize = m_dev2MeterList[devID];
 					if (nowSize != beforeSize)
 					{
-						LogInfo("--before size:"<< beforeSize << "  --now size:"<< nowSize);
+						LogInfo("--before size:" << beforeSize << "  --now size:" << nowSize);
 						bUpdate = true;
 						break;
 					}
-					
+
 				}
 				it++;
 			}
-			
+
 		}
 
-		if(bUpdate)
+		if (bUpdate)
 		{
 			ISFIT::SmartLock lock(m_devCfgMutex);
 			ReadDevCfgFromObj(devIdList);
-			SaveFile();	
-			m_devIdList=devIdList;	
+			SaveFile();
+			m_devIdList = devIdList;
 			m_dev2MeterList = dev2MeterList;
 			LogInfo("--------go to update-------");
 		}
 		return bUpdate;
 	}
-	
+
 	void CMMConfig::UpdateCfgFile()
 	{
 		//LogInfo("--------UpdateCfgFile："<<m_DevCfgFileName.c_str());
@@ -231,12 +231,12 @@ namespace CMM{
 		std::map <CData, int> dev2MeterList;
 
 		APPAPI::GetDevId("alias", devIdList);
-		static bool bFirst=true;
-		if(bFirst)
+		static bool bFirst = true;
+		if (bFirst)
 		{
-			bFirst=false;
-			m_devIdList=devIdList;
-			
+			bFirst = false;
+			m_devIdList = devIdList;
+
 			std::list<CData>::iterator it = devIdList.begin();
 			while (it != devIdList.end())
 			{
@@ -250,110 +250,163 @@ namespace CMM{
 			}
 			m_dev2MeterList = dev2MeterList;
 		}
-		
+
 		ISFIT::SmartLock lock(m_devCfgMutex);
 		ReadDevCfgFromObj(devIdList);
 		SaveFile();
-		m_bUpdate=true;
+		m_bUpdate = true;
 		m_bUpdateBak = true;
+	}
+
+	// 或者，不使用std::ostringstream，使用更简单的条件判断：
+	std::string formatAsTwoDigitsSimple(int number) {
+		if (number < 10) 
+		{
+			return "00" + std::to_string(number);
+		}
+		else if (number < 100)
+		{
+			return "0" + std::to_string(number);
+		}
+		else 
+		{
+			return std::to_string(number);
+		}
 	}
 
 	void CMMConfig::ReadDevCfgFromObj(std::list <CData>& devIdList)
 	{
 		m_devCfg.clear();
-		for (auto it=devIdList.begin(); it!=devIdList.end(); it++)
+		std::map<std::string, std::list<std::string>> devList;
+		CMMAccess::instance()->SendGetDeviceData(devList);
+		if (devList.size() == 0)
 		{
-			CData aliasDevId = *it;
-			if (aliasDevId.length() < 4)
-				continue;
-			
-
-			std::map<CData,CData> paramMap;
-			APPAPI::GetDevParam(aliasDevId,"alias", paramMap,5000);
-				
-			CData devId = paramMap["devId"];
-			CData deviceName = paramMap["aliasDevName"];
-			TDevConf dev={0};
-			dev.DeviceID = aliasDevId;
-			dev.DeviceName = deviceName;
-			dev.DeviceType = aliasDevId.substr(0,2);
-			dev.DeviceSubType = aliasDevId.substr(2,2);
-			LogInfo("--------aliasDevId :" << aliasDevId << " deviceID:" << devId);
-			std::map<CData, TDeviceInfo> pMap = m_pDeviceConfig->GetDevices();
-			auto iter = pMap.find(devId);
-			if (iter != pMap.end())
+			LogError("this is not have devdata.");
+			return;
+		}
+		try
+		{
+			std::map<CData, TDeviceInfo> pMap = m_pDeviceConfig->GetDevices();  //所有设备的配置信息
+			for (auto it = devIdList.begin(); it != devIdList.end(); it++)
 			{
-				TDeviceInfo& sinfo = iter->second;
-				dev.Brand = sinfo.Brand;
-				dev.Model = sinfo.Model;
-				dev.DevDescribe = sinfo.Desc;
-				dev.Version = sinfo.Version;
-				dev.RatedCapacity = sinfo.RatedCapacity.convertDouble();
-				dev.BeginRunTime = sinfo.BeginRunTime;
-				dev.DeviceSubType = sinfo.DeviceSubType;
-			}
-			dev.SiteID = CMMParam::instance()->m_SiteID;
-			dev.SiteName =  CMMParam::instance()->m_SiteName;
-			dev.RoomID =  CMMParam::instance()->m_RoomID;
-			dev.RoomName =  CMMParam::instance()->m_RoomName;
-			std::set<CData> attrSet;
-			attrSet.insert("meterId");
-			attrSet.insert("meterType");
-			attrSet.insert("alarmLevel");
-			attrSet.insert("threshold");
-			attrSet.insert("meterName");
-			std::list<std::map<CData,CData> > infoList;
-			APPAPI::GetMeterInfo(aliasDevId, "alias", attrSet, infoList, 10000);
-			for (auto mit=infoList.begin(); mit!=infoList.end(); mit++)
-			{		
-				std::map<CData,CData>& attr = *mit;
-				CData meterId=attr["meterId"];
-				if(meterId.length() > 0)
-				{
-					int alarmLevel = 0;
-					float threshold = 0.0;
-
-					if (1)
-					{
-						alarmLevel = attr["alarmLevel"].convertInt();
-						threshold = attr["threshold"].convertDouble();
-					}	
-					TSignal signal;
-					signal.Type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-					int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-					if (nType < 5)
-					{
-						signal.Type = nType;
-					}
-					else if(nType == 5)
-					{
-						signal.Type = CMM::ALARM;
-					}
-					signal.AlarmLevel = alarmLevel;
-					signal.Threshold = threshold;
+				CData aliasDevId = *it;
+				if (aliasDevId.length() < 4)
+					continue;
+				std::map<CData, CData> paramMap;
+				APPAPI::GetDevParam(aliasDevId, "alias", paramMap, 5000);
+				CData devId = paramMap["devId"];
+				CData deviceName = paramMap["aliasDevName"];
+				TDevConf dev = { };
+				dev.DeviceID = aliasDevId;
+				dev.DeviceName = deviceName;
+				dev.DeviceType = aliasDevId.substr(0, 2);
+				dev.DeviceSubType = aliasDevId.substr(2, 2);
+				LogInfo("devId: " << devId << " --------aliasDevId :" << aliasDevId << " deviceID:" << devId);
 				
-					int len=meterId.length();
-					//取前面3位判断是否是移动量095或020
-					CData id=meterId.substr(0,3);
-					int iID=id.convertInt();
-					bool bRet = Is_range(iID);
-					if(len>3&& bRet)
-					{						
-						/*APPAPI::tMeterVal meterVal = { 0 };
-						APPAPI::GetMeterVal(aliasDevId, meterId,"alias", meterVal);*/
-						signal.ID =meterId.substr(0,len-3);
-						signal.SignalNumber = meterId.substr(len-3,3).convertInt();
-						signal.NMAlarmID = NMAlarmID(signal.ID);
-						CData name  = GetDictionaryName(meterId);
-						signal.SignalName = name;
-						dev.singals.push_back(signal);
+				auto iter = pMap.find(devId);
+				if (iter != pMap.end())
+				{
+					TDeviceInfo& sinfo = iter->second;
+					dev.DeviceOrderNo = sinfo.DeviceOrderNo;
+					dev.Brand = sinfo.Brand;
+					dev.Model = sinfo.Model;
+					dev.ModuleNo = sinfo.ModuleNo;
+					dev.DevDescribe = sinfo.Desc;
+					dev.Version = sinfo.Version;
+					dev.RatedCapacity = sinfo.RatedCapacity.convertDouble();
+					dev.BeginRunTime = sinfo.BeginRunTime;
+					dev.DeviceSubType = sinfo.DeviceSubType;
+					
+				}
+				dev.SiteID = CMMParam::instance()->m_SiteID;
+				dev.SiteName = CMMParam::instance()->m_SiteName;
+				dev.RoomID = CMMParam::instance()->m_RoomID;
+				dev.RoomName = CMMParam::instance()->m_RoomName;
+
+				auto devIter = devList.find(devId.c_str());
+				if (devIter == devList.end())  //找不到对应关系
+				{
+					LogError("this is not have subdev.");
+					continue;
+				}
+				std::list<std::string>& subList = devIter->second;  //父设备下挂子设备列表
+				LogInfo("subList:"<< subList.size());
+				for (const auto& str : subList)
+				{
+					std::string subDeviceId = str;
+					auto iter = pMap.find(subDeviceId);
+					if (iter == pMap.end())
+					{
+						LogDebug("this subdevice msg is not found: "<< subDeviceId);
+						continue;
 					}
+					int devIndex = iter->second.DeviceOrderNo.convertInt();  //根据设备顺序号 获取设备索引
+					if (devIndex < 1) devIndex = 1;
+					std::set<CData> attrSet;
+					attrSet.insert("meterId");
+					attrSet.insert("meterType");
+					attrSet.insert("alarmLevel");
+					attrSet.insert("threshold");
+					attrSet.insert("meterName");
+					std::list<std::map<CData, CData> > infoList;
+					APPAPI::GetMeterInfo(subDeviceId, "msj", attrSet, infoList, 3000);
+					LogInfo("devindex: "<< devIndex << "   subDeviceId:" << subDeviceId << " size:" << infoList.size());
+					for (auto mit = infoList.begin(); mit != infoList.end(); mit++)
+					{
+						std::map<CData, CData>& attr = *mit;
+						std::string meterId = attr["meterId"].c_str();
+						if (meterId.length() > 3)
+						{
+							int alarmLevel = 0;
+							float threshold = 0.0;
+							if (1)
+							{
+								alarmLevel = attr["alarmLevel"].convertInt();
+								threshold = attr["threshold"].convertDouble();
+							}
+							TSignal signal;
+							signal.Type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
+							int nType = atoi(meterId.substr(3, 1).c_str());  //第四位判断类型
+							if (nType < 5)
+							{
+								signal.Type = nType;
+							}
+							else if (nType == 5)
+							{
+								signal.Type = CMM::ALARM;
+							}
+							signal.AlarmLevel = alarmLevel;
+							signal.Threshold = threshold;
+
+							int len = meterId.length();
+							//取前面3位判断是否是移动量095或020
+							CData id = meterId.substr(0, 3).c_str();
+							int iID = id.convertInt();
+							bool bRet = Is_range(iID);
+							if (len > 3 && bRet)
+							{
+								/*APPAPI::tMeterVal meterVal = { 0 };
+								APPAPI::GetMeterVal(aliasDevId, meterId,"alias", meterVal);*/
+								int meterIndex = (devIndex-1) * 50 + atoi(meterId.substr(len - 3, 3).c_str());
+								signal.ID = Poco::format("%s%s",meterId.substr(0,meterId.length()-3), formatAsTwoDigitsSimple(meterIndex));
+								signal.SignalNumber = atoi(meterId.substr(len - 3, 3).c_str());
+								signal.NMAlarmID = NMAlarmID(signal.ID.substr(signal.ID.length()-6, 6));
+								CData name = GetDictionaryName(meterId);
+								signal.SignalName = name + "#"+ CData(subDeviceId);
+								dev.singals.push_back(signal);
+							}
+						}
+					}
+					m_devCfg[aliasDevId] = dev;
 				}
 			}
-			m_devCfg[aliasDevId] = dev;
+		}
+		catch (const std::exception& e)
+		{
+			LogError("exception: " << e.what());
 		}
 	}
-	
+
 	int CMMConfig::GetDevMetes(TDevConf& cfg)
 	{
 		ISFIT::SmartLock lock(m_devCfgMutex);
@@ -403,12 +456,12 @@ namespace CMM{
 		return 0;
 	}
 
-	int CMMConfig::SetDevCfg(std::map<CData, TDevConf>& devMap, std::list<CData>& scucessList, std::list<CData>& failList )
+	int CMMConfig::SetDevCfg(std::map<CData, TDevConf>& devMap, std::list<CData>& scucessList, std::list<CData>& failList)
 	{
-		bool bOK=false;
-		
+		bool bOK = false;
 
-		for (auto it=devMap.begin(); it!=devMap.end(); it++)
+		std::map<CData, std::list<std::map<CData, CData> > > paramList;
+		for (auto it = devMap.begin(); it != devMap.end(); it++)
 		{
 			CData aliasDevId = it->first;
 			TDevConf& devConf = it->second;
@@ -416,89 +469,68 @@ namespace CMM{
 			std::map<CData, CData> devParamMap;
 			APPAPI::GetDevParam(aliasDevId, "alias", devParamMap, 5000);
 			CData deviceId = devParamMap["devId"];
-
-			std::map<CData,CData> paramMap;
+			std::map<CData, CData> paramMap;
 			paramMap["aliasDevName"] = devConf.DeviceName;
 			paramMap["aliasDevId"] = aliasDevId;
 			paramMap["devId"] = deviceId;
-			APPAPI::SetDevParam(deviceId, "msj", paramMap,5000);
-
+			APPAPI::SetDevParam(deviceId, "msj", paramMap, 5000);
 			LogInfo("deviceId:  " << deviceId);
-			if (1)
+			std::list<TSignal>& singals = devConf.singals;
+			for (auto mit = singals.begin(); mit != singals.end(); mit++)
 			{
-				/*auto iter = m_aliasId2Info.find(aliasDevId);
-				if (iter != m_aliasId2Info.end())
-				{
-					TDeviceInfo& sinfo = iter->second;
-					sinfo.Brand = devConf.Brand;
-					sinfo.Model = devConf.Model;
-					sinfo.Desc = devConf.DevDescribe;
-					sinfo.Version = devConf.Version;
-					sinfo.RatedCapacity = CData(devConf.RatedCapacity);
-					sinfo.BeginRunTime = devConf.BeginRunTime;
-				}
-				m_SiteID = devConf.SiteID;
-				m_SiteName = devConf.SiteName;
-				m_RoomID = devConf.RoomID;
-				m_RoomName = devConf.RoomName;*/
-				std::list<std::map<CData,CData> > paramList;
-				std::list<TSignal>& singals = devConf.singals;
-				for (auto mit=singals.begin(); mit!=singals.end(); mit++)
-				{	
-					TSignal& signal = *mit;
-					
-					int signalNum=signal.SignalNumber;
-					char tmp[32]={0};
-					sprintf(tmp,"%03d",signalNum);
-					CData strSignalNumber=CData(tmp);
-					if (strSignalNumber == "000")
-						strSignalNumber = "001";
-						
-					CData meterId = signal.ID+strSignalNumber;
-					//LogInfo("~~~~~~~devid: " <<devid<<" id:"<< signal.ID<<" signalNum "<<strSignalNumber<<" meterID: "<<meterId);
+				TSignal& signal = *mit;
 
-					std::map <CData, CData> meterParamMap;
-					meterParamMap["meterId"] = meterId;
-					meterParamMap["threshold"] = CData(signal.Threshold);
-					//LogInfo("threshold====:"<<CData(signal.Threshold));
-					meterParamMap["alarmLevel"] = CData(signal.AlarmLevel);
-					paramList.push_back(meterParamMap);
-				}
+				CData meterId = signal.ID;
+				int serioNo = meterId.substr(meterId.length() - 3, 3).convertInt();
+				serioNo = serioNo % 50;
+				meterId = Poco::format("%s%s", meterId.substr(0, meterId.length() - 3), formatAsTwoDigitsSimple(serioNo));
 
-				std::list<CData> errorMeterIdList;
-				int ret1 = APPAPI::SetMeterParam(aliasDevId, "alias", paramList, errorMeterIdList, 5000);
-				
-				if (errorMeterIdList.size() == 0)
+				CData signalName = signal.SignalName;
+				size_t hashPos = signalName.find("#");
+				if (hashPos == CDATA_NPOS)
 				{
-					bOK = true;
-					scucessList.push_back(aliasDevId);
-					LogInfo("SetDevCfg ok devId:"<< aliasDevId <<" ret1:"<<ret1);
+					continue;
 				}
-				else
-				{
-					failList.push_back(aliasDevId);
-					LogError("=== SetDevCfg() SetMeterParam failed devid:"<< aliasDevId <<" ret1:"<<ret1);
-				}
+				CData subDeviceID = signalName.substr(hashPos+1);
+				std::map <CData, CData> meterParamMap;
+				meterParamMap["meterId"] = meterId;
+				meterParamMap["threshold"] = CData(signal.Threshold);
+				//LogInfo("threshold====:"<<CData(signal.Threshold));
+				meterParamMap["alarmLevel"] = CData(signal.AlarmLevel);
+				paramList[subDeviceID].push_back(meterParamMap);
+			}
+		}
+		for(auto iter = paramList.begin() ; iter != paramList.end(); ++iter)
+		{
+			CData subDeviceId = iter->first;
+			std::list<std::map<CData, CData>> meterList;
+			std::list<CData> errorMeterIdList;
+			int ret1 = APPAPI::SetMeterParam(subDeviceId, "msj", meterList, errorMeterIdList, 5000);
+			if (errorMeterIdList.size() == 0)
+			{
+				bOK = true;
+				scucessList.push_back(subDeviceId);
+				LogInfo("SetDevCfg ok devId:" << subDeviceId.c_str() << " ret1:" << ret1);
 			}
 			else
 			{
-				failList.push_back(aliasDevId);
-				LogError("=== SetDevCfg() SetDevParam failed devid:"<< aliasDevId);
+				failList.push_back(subDeviceId);
+				LogError("=== SetDevCfg() SetMeterParam failed devid:" << subDeviceId.c_str() << " ret1:" << ret1);
 			}
 		}
 
-       if(bOK)
-	   {
+		if (bOK)
+		{
 			LogInfo("SetDevCfg===ok  now UpdateCfgFile");
 			UpdateCfgFile();
 			return 0;
-	   }
-	   
-	   return -1;
-		
+		}
+
+		return -1;
+
 	}
 
-	int CMMConfig::GetDevConf( CData devid, TDevConf& cfg )
+	int CMMConfig::GetDevConf(CData devid, TDevConf& cfg)
 	{
 		ISFIT::SmartLock lock(m_devCfgMutex);
 		{
@@ -509,7 +541,7 @@ namespace CMM{
 				return 0;
 			}
 		}
-		LogError("get dev config failed id:"<<devid<<" go to get all devCfg");
+		LogError("get dev config failed id:" << devid << " go to get all devCfg");
 		UpdateCfgFile();
 		{
 			auto it = m_devCfg.find(devid);
@@ -519,7 +551,7 @@ namespace CMM{
 				return 0;
 			}
 		}
-		LogError("~~~~~~get dev config still failed id:"<<devid);
+		LogError("~~~~~~get dev config still failed id:" << devid);
 		return -1;
 	}
 
@@ -531,7 +563,7 @@ namespace CMM{
 		{
 			std::list<TSemaphore> rspSemaphoreList;
 			const CData& devId = *it;
-			TDevConf cfg = { 0 };
+			TDevConf cfg = {  };
 			if (GetDevConf(devId, cfg) < 0)
 			{
 				LogError("get dev config failed id:" << devId);
@@ -555,7 +587,7 @@ namespace CMM{
 					rspSemaphore.ID = ID;
 					rspSemaphore.SignalNumber = signalNum;
 					rspSemaphore.AlarmLevel = pos->AlarmLevel;
-					SetMeteValues(attr, rspSemaphore,pos->Type);
+					SetMeteValues(attr, rspSemaphore, pos->Type);
 					rspSemaphoreList.push_back(rspSemaphore);
 				}
 				pos++;
@@ -565,32 +597,32 @@ namespace CMM{
 		LogInfo("GetSemaphoreConf size: " << reqDevMap.size());
 	}
 
-	int CMMConfig::SetSemaphoreConf( CData devid, TSemaphore& cfg )
+	int CMMConfig::SetSemaphoreConf(CData devid, TSemaphore& cfg)
 	{
-	   TDevConf devCfg = {0};
-		if(GetDevConf(devid, devCfg) < 0)
+		TDevConf devCfg = { };
+		if (GetDevConf(devid, devCfg) < 0)
 		{
 			return -1;
 		}
 		TSemaphore& semaphore = cfg;
-		int signalNum= semaphore.SignalNumber;
-		char tmp[32]={0};
-		sprintf(tmp,"%03d",signalNum);
-		CData strSignalNumber=CData(tmp);		
+		int signalNum = semaphore.SignalNumber;
+		char tmp[32] = { 0 };
+		sprintf(tmp, "%03d", signalNum);
+		CData strSignalNumber = CData(tmp);
 		CData meterId = semaphore.ID + strSignalNumber;
-		std::map<CData,CData> paramMap;
+		std::map<CData, CData> paramMap;
 		CData setupVal(semaphore.SetupVal);
 		paramMap["val"] = setupVal;
 		//LogInfo("~~~~~~~devid: " <<devid.c_str() <<" meterId:"<<meterId.c_str() <<" setupVal "<<setupVal.c_str());
 		int ret = APPAPI::SetMeterVal(devid, meterId, "alias", setupVal);
-		if (ret<0) return -2;
+		if (ret < 0) return -2;
 		APPAPI::SetMeterParam(devid, meterId, "alias", paramMap);
 		return 0;
 	}
 
-	int CMMConfig::SetThresholdConf( CData devid, TThreshold& cfg )
+	int CMMConfig::SetThresholdConf(CData devid, TThreshold& cfg)
 	{
-		TDevConf devCfg = { 0 };
+		TDevConf devCfg = { };
 		if (GetDevConf(devid, devCfg) < 0)
 		{
 			return -1;
@@ -608,21 +640,21 @@ namespace CMM{
 		return 0;
 	}
 
-	int CMMConfig::SetStorageRuleConf( CData devid, TSignal& cfg )
+	int CMMConfig::SetStorageRuleConf(CData devid, TSignal& cfg)
 	{
-		TDevConf devCfg = {0};
-		if(GetDevConf(devid, devCfg) < 0)
+		TDevConf devCfg = { };
+		if (GetDevConf(devid, devCfg) < 0)
 		{
 			return -1;
 		}
 		TSignal& signal = cfg;
-		int signalNum= signal.SignalNumber;
-		char tmp[32]={0};
-		sprintf(tmp,"%03d",signalNum);
-		CData strSignalNumber=CData(tmp);
+		int signalNum = signal.SignalNumber;
+		char tmp[32] = { 0 };
+		sprintf(tmp, "%03d", signalNum);
+		CData strSignalNumber = CData(tmp);
 		CData meterId = signal.ID + strSignalNumber;
 		//LogInfo("~~~~~~~~~~~~~~devid: " <<devid<<" id:"<< signal.ID<<"signalNum "<<strSignalNumber<<"meterID: "<<meterId);			
-		std::map<CData,CData> paramMap;
+		std::map<CData, CData> paramMap;
 		paramMap["absoluteVal"] = CData(signal.AbsoluteVal);
 		paramMap["relativeVal"] = CData(signal.RelativeVal);
 		paramMap["storePeriod"] = CData(signal.savePeriod);
@@ -630,7 +662,7 @@ namespace CMM{
 		return 0;
 	}
 
-	int CMMConfig::SetMeteValues(std::map<CData, CData>& param, TSemaphore& semaphore,int nType)
+	int CMMConfig::SetMeteValues(std::map<CData, CData>& param, TSemaphore& semaphore, int nType)
 	{
 		semaphore.MeasuredVal = param["val"].convertDouble();
 		semaphore.Status = CMM::STATE_NOALARM;
@@ -715,7 +747,7 @@ namespace CMM{
 
 	bool CMMConfig::WriteMeasurefile()
 	{
-		
+
 		if (CMMParam::instance()->m_FsuId.empty() || CMMParam::instance()->m_FsuId.length() < 1)
 		{
 			//LogError("3333333333333");
@@ -731,7 +763,7 @@ namespace CMM{
 
 		// 打开文件以进行写入  
 		std::ofstream outputFile(filePath.c_str());
-		if (!outputFile) 
+		if (!outputFile)
 		{
 			LogError("Failed to open output file!");
 			return false; // 或者处理错误，例如退出程序  
@@ -740,7 +772,7 @@ namespace CMM{
 		CData head = "序号,性能数据采集时间,DeviceID,监控点ID,SignalNumber,监控点描述,监控点数据类型,监控点数据测量值\n";//文件数据格式
 		outputFile << head.c_str();
 		auto it = reqDevMap.begin();
-		int SerialNo= 1;
+		int SerialNo = 1;
 		for (; it != reqDevMap.end(); ++it)
 		{
 			CData deviceId = it->first;
@@ -749,16 +781,16 @@ namespace CMM{
 			for (; iter != semInfos.end(); ++iter)
 			{
 				TSemaphore semInfo = *iter;
-				if (semInfo.Type < 3) 
+				if (semInfo.Type < 3)
 					continue;
-				if(semInfo.AlarmLevel > 0) //只需要遥信AI = 3, 遥测DI =4 遥测包含告警 因此过滤告警级别大于0的（为0才是DI 否则是告警）
+				if (semInfo.AlarmLevel > 0) //只需要遥信AI = 3, 遥测DI =4 遥测包含告警 因此过滤告警级别大于0的（为0才是DI 否则是告警）
 					continue;
 				CData type = "DI";
 				if (semInfo.Type == 3)
 					type = "AI";
 
 				std::string time = semInfo.Time.c_str(); //2024-02-28 17:32:12
-				for (char c : {' ', '-', ':'}) 
+				for (char c : {' ', '-', ':'})
 				{
 					// 使用 erase-remove idiom 移除特定字符
 					time.erase(std::remove(time.begin(), time.end(), c), time.end());
@@ -779,12 +811,12 @@ namespace CMM{
 
 				std::string strInfo = oss.str();
 				outputFile << strInfo;
-			}	
+			}
 		}
 		// 关闭文件流  
 		outputFile.close();
 		// 检查文件是否成功关闭  
-		if (!outputFile.good()) 
+		if (!outputFile.good())
 		{
 			LogError("Failed to write to output file!");
 			return false;
@@ -796,7 +828,8 @@ namespace CMM{
 	{
 		return m_pDeviceConfig;
 	}
-	
+
+
 
 }
 

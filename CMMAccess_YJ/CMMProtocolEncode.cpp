@@ -12,7 +12,7 @@
 #include "CMMAccess.h"
 #include "CTextEncryption.h"
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
-
+//#include "ExtSoApi.h"
 
 #define SPECIAL_METERID "095402"
 namespace CMM{

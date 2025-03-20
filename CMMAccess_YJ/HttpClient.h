@@ -34,6 +34,10 @@ namespace CMM
 		int SendXmlData(const char* url, CData xmlData, CData authHeader, HTTPResponse& response, CData& responseData);
 
 		/*
+		* 发送GET请求获取设备数据
+		*/
+		int SendGetDeviceData(const char* url,std::string& res);
+		/*
 		* 获取response 认证头 token
 		*/
 		static CData GetTokenFromHeader(const HTTPResponse& response);

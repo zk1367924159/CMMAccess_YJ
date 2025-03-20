@@ -14,7 +14,7 @@
 #include "fstream"
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
 #include "../../ExtAppIpc/ExtAppIpcStruct.h"
-
+//#include "ExtSoApi.h"
 #define  CMM_DEVICE_JSON_FILE_PATH "/appdata/config/CMMAccessB_device.json"
 namespace CMM{
 	std::vector<int> CMMDeviceConfig::vStringSplit(const  CData& s, const std::string& delim)
@@ -134,6 +134,7 @@ namespace CMM{
 		}
 		jsonDataStream << "{"
 			<< " \"DeviceNo\": \"" << cfg.DeviceNo.c_str() << "\","
+			<< " \"DeviceOrderNo\": \"" << cfg.DeviceOrderNo.c_str() << "\","
 			<< " \"AliasDeviceNo\": \"" << cfg.AliasDeviceNo.c_str() << "\","
 			<< " \"DeviceName\": \"" << cfg.DeviceName.c_str() << "\","
 			<< " \"AliasDeviceName\": \"" << cfg.AliasDeviceName.c_str() << "\","
@@ -141,6 +142,7 @@ namespace CMM{
 			<< " \"DeviceSubType\" : \"" << cfg.DeviceSubType.c_str() << "\","
 			<< " \"Brand\" : \"" << cfg.Brand.c_str() << "\","
 			<< " \"Model\" : \"" << cfg.Model.c_str() << "\","
+			<< " \"ModuleNo\" : \"" << cfg.ModuleNo.c_str() << "\","
 			<< " \"Desc\" : \"" << cfg.Desc.c_str() << "\","
 			<< " \"RatedCapacity\" : \"" << cfg.RatedCapacity.c_str() << "\","
 			<< " \"Version\" : \"" << cfg.Version.c_str() << "\","
@@ -188,6 +190,7 @@ namespace CMM{
 		try
 		{
 			sInfo.DeviceNo = jsonObj->getValue<std::string>("DeviceNo");
+			sInfo.DeviceOrderNo = jsonObj->getValue<std::string>("DeviceOrderNo");
 			sInfo.AliasDeviceNo = jsonObj->getValue<std::string>("AliasDeviceNo");
 			sInfo.DeviceName = jsonObj->getValue<std::string>("DeviceName");
 			sInfo.AliasDeviceName = jsonObj->getValue<std::string>("AliasDeviceName");
@@ -195,6 +198,7 @@ namespace CMM{
 			sInfo.DeviceSubType = jsonObj->getValue<std::string>("DeviceSubType");
 			sInfo.Brand = jsonObj->getValue<std::string>("Brand");
 			sInfo.Model = jsonObj->getValue<std::string>("Model");
+			sInfo.ModuleNo = jsonObj->getValue<std::string>("ModuleNo");
 			sInfo.Desc = jsonObj->getValue<std::string>("Desc");
 			sInfo.RatedCapacity = jsonObj->getValue<std::string>("RatedCapacity");
 			sInfo.Version = jsonObj->getValue<std::string>("Version");
@@ -222,7 +226,7 @@ namespace CMM{
 		LogInfo("SetDevParam alias  devId return " << nRet);*/
 		for (auto& it : m_aliasId2Info)
 		{
-			if (it.second.AliasDeviceNo == sInfo.AliasDeviceNo)
+			if (it.second.AliasDeviceNo == sInfo.AliasDeviceNo && !it.second.AliasDeviceNo.empty())
 			{
 				if (it.second.DeviceNo != sInfo.DeviceNo)
 				{
@@ -284,6 +288,7 @@ namespace CMM{
 					try
 					{
 						sInfo.DeviceNo = device->getValue<std::string>("DeviceNo");
+						sInfo.DeviceOrderNo = device->getValue<std::string>("DeviceOrderNo");
 						sInfo.AliasDeviceNo = device->getValue<std::string>("AliasDeviceNo");
 						sInfo.DeviceName = device->getValue<std::string>("DeviceName");
 						sInfo.AliasDeviceName = device->getValue<std::string>("AliasDeviceName");
@@ -291,6 +296,7 @@ namespace CMM{
 						sInfo.DeviceSubType = device->getValue<std::string>("DeviceSubType");
 						sInfo.Brand = device->getValue<std::string>("Brand");
 						sInfo.Model = device->getValue<std::string>("Model");
+						sInfo.ModuleNo = device->getValue<std::string>("ModuleNo");
 						sInfo.Desc = device->getValue<std::string>("Desc");
 						sInfo.RatedCapacity = device->getValue<std::string>("RatedCapacity");
 						sInfo.Version = device->getValue<std::string>("Version");
@@ -423,6 +429,73 @@ namespace CMM{
 		}
 		std::string jsonString = jsonDataStream.str();
 		return jsonString;
+	}
+
+	bool CMMDeviceConfig::parseDevList(std::string& jsonData,std::map<std::string,std::list<std::string>>& devList)
+	{
+		// 解析JSON字符串  
+		Poco::JSON::Parser parser{};
+		Poco::JSON::Object::Ptr jsonObj;
+		try
+		{
+			Poco::Dynamic::Var val = parser.parse(jsonData);
+			jsonObj = val.extract<Poco::JSON::Object::Ptr>();
+		}
+		catch (const Poco::Exception& e)
+		{
+			LogError("e:" << e.what());
+			return false;
+		}
+		if (!jsonObj)
+		{
+			LogError("jsonObj is nullptr.");
+			return false;
+		}
+		Poco::JSON::Object::Ptr obj = jsonObj->getObject("result");
+		if (!obj)
+		{
+			LogError("result is nullptr.");
+			return false;
+		}
+		Poco::JSON::Array::Ptr devArray = obj->getArray("devList");
+		if (devArray)
+		{
+			
+			for (size_t i = 0; i < devArray->size(); ++i)
+			{
+				// 提取当前元素为对象指针以便访问其属性
+				Poco::JSON::Object::Ptr device = devArray->getObject(i);
+				if (device)
+				{
+					std::string devId = device->getValue<std::string>("devId");
+					std::list<std::string> subList;
+					Poco::JSON::Array::Ptr subArray = device->getArray("children");
+					if (subArray)
+					{
+						for (size_t j = 0; j < subArray->size(); ++j)
+						{
+							Poco::JSON::Object::Ptr subDevice = subArray->getObject(j);
+							std::string subDevId = subDevice->getValue<std::string>("devId");
+							subList.push_back(subDevId);
+						}
+					}
+					if (subList.size() > 0)
+					{
+						devList[devId] = subList;
+					}	
+				}
+				else
+				{
+					LogNotice("One of the devices in DeviceList is not an object.");
+					return false;
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
+		return true;
 	}
 
 }

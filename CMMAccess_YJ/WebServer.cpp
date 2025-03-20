@@ -12,7 +12,8 @@
 #include "Poco/File.h"
 #include "Poco/FileStream.h"
 #include "Poco/StreamCopier.h"
-
+#include "../../ExtAppIpc/ExtAppIpcApi.h"
+//#include "ExtSoApi.h"
 #include "fstream"
 
 using namespace Poco::Net;
@@ -91,7 +92,7 @@ namespace CMM
 		Poco::URI uri(requestUri.c_str());
 		CData path = uri.getPath().c_str();
 		std::string param = uri.getQuery();
-		LogInfo("method : " << method << "  param :" << param << " path: " <<path);
+		//LogInfo("method : " << method << "  param :" << param << " path: " <<path);
 		if (method == "GET")
 		{
 			if (path == "/GetDevice")
@@ -159,7 +160,7 @@ namespace CMM
 			std::istream& rs = request.stream();
 			std::string content((std::istreambuf_iterator<char>(rs)),
 					std::istreambuf_iterator<char>());
-			LogInfo("POST httpbody: " << content);
+			//LogInfo("POST httpbody: " << content);
 			if (path == "/SetDevice")
 			{
 				int nRet =  CMMConfig::instance()->GetDeviceConfig()->SetDevConf(content);
@@ -193,16 +194,28 @@ namespace CMM
 				std::ostream& out = response.send();
 				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(0);
 			}
+			else if (path == "/api/RemoveAllAlarm")
+			{
+				CMMAccess::instance()->RemoveAlarms();  //同步更新CMMConfig dev conf内容
+				response.setStatus(HTTPResponse::HTTP_OK);
+				response.setContentType("application/json");
+				response.send();
+			}
+			else if (path == "/api/RebootSys")
+			{
+				APPAPI::RebootSys();
+				response.setStatus(HTTPResponse::HTTP_OK);
+				response.setContentType("application/json");
+				response.send();
+			}
 			else if (path == "/")
 			{
 				response.setStatus(HTTPResponse::HTTP_OK);
 				response.setContentType("application/json");
-				std::ostream& out = response.send();
-				out <<  CMMConfig::instance()->GetDeviceConfig()->EncodeResponseJson(0);
+				response.send();
 			}
 			else
 			{
-				LogInfo("22222222");
 				response.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
 				response.setContentType("application/json");
 				std::ostream& out = response.send();

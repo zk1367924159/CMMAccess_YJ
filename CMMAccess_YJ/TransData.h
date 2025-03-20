@@ -16,7 +16,7 @@
 #include "Poco/URI.h"
 #include "Poco/DigestStream.h"
 
-#define MAX_RECV_DATASIZE  2* 1024 * 1024
+#define MAX_RECV_DATASIZE  10  * 1024
 
 namespace CMM
 {

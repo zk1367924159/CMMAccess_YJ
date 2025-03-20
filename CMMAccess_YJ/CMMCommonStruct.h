@@ -230,7 +230,13 @@ typedef struct  	sTSignal
 
 typedef struct		  sTDevConf
 {
+	public:
+		sTDevConf()
+		{
+			RatedCapacity = 0.0; result = 0;
+		}
 	CData DeviceID;
+	CData DeviceOrderNo;
 	CData DeviceName;
 	CData RoomName;
 	CData SiteName;
@@ -240,6 +246,7 @@ typedef struct		  sTDevConf
 	CData DeviceSubType;
 	CData Model;
 	CData Brand;
+	CData ModuleNo;
 	float RatedCapacity;
 	CData Version;
 	CData BeginRunTime;
@@ -249,8 +256,14 @@ typedef struct		  sTDevConf
 	int result;
 }TDevConf;
 
-typedef struct  
+typedef struct  sTSemaphore
 {
+	public:
+		sTSemaphore()
+		{
+			Type = 0; MeasuredVal = 0.0; SetupVal = 0.0;
+			Status = 0; SignalNumber = 0; AlarmLevel = 0; result = 0;
+		}
 	int Type;
 	CData ID;
 	float MeasuredVal;
@@ -314,6 +327,7 @@ typedef struct
 typedef struct
 {
 	CData DeviceNo;   //设备编码
+	CData DeviceOrderNo; //设备顺序号
 	CData AliasDeviceNo;   //设备别名编码
 	CData DeviceName; //设备名称
 	CData AliasDeviceName;//设备别名
@@ -321,6 +335,7 @@ typedef struct
 	CData DeviceSubType;//类型子设备
 	CData Brand;//设备品牌
 	CData Model;//设备型号
+	CData ModuleNo;//模块号
 	CData Desc;//描述
 	CData RatedCapacity;//额定容量
 	CData Version;//版本

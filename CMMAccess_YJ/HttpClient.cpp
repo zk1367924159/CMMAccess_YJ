@@ -126,5 +126,59 @@ namespace CMM
 		return strToken;
 	}
 
+	int HttpClient::SendGetDeviceData(const char* url,std::string& res)
+	{
+		Poco::URI uri(url);
+		HTTPClientSession session("127.0.0.1", 80);
+		std::string mobile = "Digest realm=\"FSU\",qop=\"auth\",nonce=\"bc3b7616f579328ed72bc2123c675df4\",opaque=\"0000000\",algorithm=MD5, username=\"admin\", uri=\"%2Fjscmd%2FgetDevLevelList%3Flevel%3D2%260.8538478781335808\", response=\"f17d17845452114bb29369563f33c791\", nc=00000001, cnonce=\"cnonce\"";
+		HTTPRequest request("GET", uri.getPath().c_str(), "HTTP/1.1");
+		request.set("Mobile", mobile.c_str());
+		request.set("Accept", "*/*");
+		try
+		{
+			session.sendRequest(request);
+		}
+		catch (const Poco::TimeoutException& te) 
+		{
+			LogError("Timeout exception resquest: " << te.displayText());
+			//m_pSession.reset();
+			return -3;
+		}
+		catch (const Poco::Exception& e)
+		{
+			LogError("Error send resquest : " << e.displayText());
+			return -1;
+		}
+
+		try
+		{
+			HTTPResponse response;
+			std::istream& rs = session.receiveResponse(response);
+			if (!rs) 
+				throw std::runtime_error("Failed to recv response.");
+			if (response.getStatus() == HTTPResponse::HTTPStatus::HTTP_OK)
+			{
+				Poco::StreamCopier::copyToString(rs, res);
+				LogInfo("RECV++++++++++= :" << res);
+				return 0;
+			}
+			else
+			{
+				LogError("Response status: " << response.getStatus() << " reason:" << response.getReason());
+			}
+			return response.getStatus();
+		}
+		catch (const Poco::TimeoutException& te) {
+			LogError("Timeout exception response: " << te.displayText());
+			//m_pSession.reset();
+			return -3;
+		}
+		catch (const Poco::Exception& e)
+		{
+			LogError("Error receive response: " << e.displayText());
+			return -1;
+		}
+		return -2;
+	}
 }
 

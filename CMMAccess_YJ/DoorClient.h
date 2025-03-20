@@ -40,6 +40,8 @@ namespace CMM
 
 		SingletonSocket() {
 			socket_.bind(SocketAddress(SocketAddress::IPv4, "0.0.0.0", 0));
+			socket_.setSendTimeout(Poco::Timespan(3, 0));
+			socket_.setReceiveTimeout(Poco::Timespan(3, 0));
 		}
 
 		~SingletonSocket() {
@@ -53,13 +55,23 @@ namespace CMM
 	class TCPSocketManager 
 	{
 	public:
-		TCPSocketManager(const std::string& serverAddress, int serverPort)
-			: tcpSocket_(Poco::Net::SocketAddress(serverAddress, serverPort)), stream_(tcpSocket_) { }
+		TCPSocketManager(const std::string& serverAddress, int serverPort, int timeoutSeconds = 3)
+			: tcpSocket_(Poco::Net::SocketAddress(serverAddress, serverPort)), stream_(tcpSocket_) 
+		{
+			Poco::Timespan timeout(timeoutSeconds, 0); // 动态设置超时时间
+			tcpSocket_.setSendTimeout(timeout);
+			tcpSocket_.setReceiveTimeout(timeout);
+		}
 
 		~TCPSocketManager() = default;
 
 		Poco::Net::SocketStream& getStream() {
 			return stream_;
+		}
+
+		bool isConnected() {
+			Poco::Timespan timeout(0, 0); // 非阻塞模式
+			return tcpSocket_.poll(timeout, Poco::Net::Socket::SELECT_WRITE | Poco::Net::Socket::SELECT_ERROR);
 		}
 
 	private:

@@ -8,7 +8,7 @@ namespace CMM
 		ISFIT::CXmlElement Device  = devices.GetSubElement(CMM::Device, index++);
 		while(Device != NULL)
 		{
-			TDevConf dev = {0};
+			TDevConf dev = { };
 			dev.DeviceID = Device.GetAttribute("DeviceID");
 			dev.BeginRunTime = Device.GetAttribute("BeginRunTime");
 			dev.Brand = Device.GetAttribute("Brand");
@@ -81,7 +81,7 @@ namespace CMM
 			ISFIT::CXmlElement subElement = device.GetSubElement("TSemaphore", subIndex++);
 			while(subElement != NULL)
 			{
-				TSemaphore semaphore = {0};
+				TSemaphore semaphore = { };
 				semaphore.ID = subElement.GetAttribute("ID");
 				semaphore.SetupVal = subElement.GetAttribute("SetupVal").convertDouble();
 				semaphore.SignalNumber = subElement.GetAttribute("SignalNumber").convertInt();
@@ -109,7 +109,7 @@ namespace CMM
 			std::list<TThreshold> valueList;
 			while(threshold != NULL)
 			{
-				TThreshold thresholdValue = {0};
+				TThreshold thresholdValue = { };
 				thresholdValue.AbsoluteVal = threshold.GetAttribute("AbsoluteVal").convertDouble();
 				thresholdValue.ID = threshold.GetAttribute("ID");
 				thresholdValue.RelativeVal = threshold.GetAttribute("RelativeVal").convertDouble();

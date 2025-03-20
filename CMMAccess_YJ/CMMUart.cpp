@@ -11,6 +11,7 @@
 #include "CLog.h"
 #include "Data.h"
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
+//#include "ExtSoApi.h"
 #include "CMMUart.h"
 #include "CMMAccess.h"
 #include "CMMParam.h"
@@ -76,18 +77,17 @@ namespace CMM
     void CMMUart::run()
     {
         int     length = 0;
-		m_uartname = CMMParam::instance()->GetParam(param::UartName, "").c_str();
+		CData uartName = CMMParam::instance()->GetParam(param::UartName, "").c_str();
 		m_baudrate = CMMParam::instance()->GetParam(param::BaudRate, "9600").convertInt();
 		m_dataBits = CMMParam::instance()->GetParam(param::DataBit, "8").convertInt();
 		m_parity = CMMParam::instance()->GetParam(param::Parity, "N").c_str();
 		m_stopBits = CMMParam::instance()->GetParam(param::StopBit, "1").convertInt();
 		m_slaveID = CMMParam::instance()->GetParam(param::SlaveID, "1").convertInt();
-		m_uartname = getUartName(m_uartname.c_str());
+		m_uartname = getUartName(uartName.c_str());
 		setUartParam();
         while (m_running)
         {
             Poco::SharedPtr<char>   recvBuffer;
-
             length = APPAPI::ReadUart(m_uartname, recvBuffer, 500);
             if (length > 0)
             {
@@ -102,13 +102,13 @@ namespace CMM
         }
     }
 
-    void CMMUart::setSlaveID(const int& slaveID)
+    void CMMUart::setSlaveID(int slaveID)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
         m_slaveID = (uint8_t)slaveID;
     }
 
-    void CMMUart::setBaudrate(const int& baudrate)
+    void CMMUart::setBaudrate(int baudrate)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
         if (m_baudrate != (int32_t)baudrate)
@@ -118,7 +118,7 @@ namespace CMM
         }
     }
 
-    void CMMUart::setDataBits(const int& dataBits)
+    void CMMUart::setDataBits(int dataBits)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
         if (m_dataBits != (int32_t)dataBits)
@@ -128,7 +128,7 @@ namespace CMM
         }
     }
 
-    void CMMUart::setStopBits(const int& stopBits)
+    void CMMUart::setStopBits(int stopBits)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
         if (m_stopBits != (int32_t)stopBits)
@@ -138,7 +138,7 @@ namespace CMM
         }
     }
 
-    void CMMUart::setParity(const std::string& parity)
+    void CMMUart::setParity(std::string parity)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
         if (m_parity != parity)
@@ -169,30 +169,30 @@ namespace CMM
                 {
                     break; // 遇到非数字字符，停止读取
                 }
-
                 // 如果读取的数字字符超过2位，停止读取
                 if (numberStr.length() > 2)
                 {
                     break;
                 }
             }
+			LogInfo("numberStr: " <<numberStr.c_str());
             if (!numberStr.empty())
             {
-				if (uartname.find("BottomBoard_Uart") == std::string::npos)
+				if (uartname.find("COM") != std::string::npos)
 				{
-					uartID = "BottomBoard_Uart" + CData(numberStr.convertInt()) + 1;
+					uartID = "BottomBoard_Uart" + CData(numberStr.convertInt() + 1);
 					m_uartID = numberStr.convertInt();
 				}
 				else
 				{
-					m_uartID = numberStr.convertInt() - 1;
+					return "";
 				}
             }
         }
         return uartID.c_str();
     }
 
-    void CMMUart::setUartName(const std::string& uartname)
+    void CMMUart::setUartName(std::string uartname)
     {
         std::lock_guard<std::mutex> lockGuard(m_rwLock);
 

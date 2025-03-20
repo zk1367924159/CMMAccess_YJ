@@ -1,0 +1,69 @@
+include ../../../config
+TARGET = $(notdir $(CURDIR))
+
+C_FLAGS = -std=c++14 -fPIC -O0 -Dexprtk_disable_caseinsensitivity -Wextra -Werror=return-type -Wno-sign-compare -Wno-error=sign-compare -Wno-error=unused-parameter -Wno-long-long -Wvariadic-macros
+
+CPP_FLAGS += -I../../../include -I./ -I../../ExtSoApi/ -I../../SdkAdaptor/
+
+LD_FLAGS += -lpthread -lstdc++ -lm
+
+COMPILE.c = $(CROSS_COMPILER)g++ $(C_FLAGS) $(CPP_FLAGS) -c
+LINK.c = $(CROSS_COMPILER)g++ $(LD_FLAGS)
+AR = $(CROSS_COMPILER)ar
+STRIP = $(CROSS_COMPILER)strip
+
+DBGTARGET = ./ext_$(TARGET)d.so.1
+DBGSTATICTARGET = ./ext_$(TARGET)d.a.1
+
+RELTARGET = ./ext_$(TARGET).so.1
+STATICTARGET = ./ext_$(TARGET).a.1
+
+DBGCFLAGS += -g -D__DEBUG 
+RELCFLAGS += 
+
+SOURCES = $(wildcard *.cpp)
+HEADERS = $(wildcard *.h)
+
+DBGOBJFILES=$(addprefix debug-$(CROSS_COMPILER)/,$(SOURCES:%.cpp=%.o))
+RELOBJFILES=$(addprefix release-$(CROSS_COMPILER)/,$(SOURCES:%.cpp=%.o))
+
+RELLDFLAGS = 
+DBGLDFLAGS = 
+
+.PHONY: clean debug release install
+
+all:	debug release
+
+install:
+	install -d $(EXEC_DIR)
+	install $(RELTARGET) $(EXEC_DIR)
+	install -m 444 $(TARGET).txt $(EXEC_DIR)
+
+release:	$(RELTARGET) 
+
+debug:		$(DBGTARGET) 
+
+$(RELTARGET):	$(RELOBJFILES)
+	$(LINK.c) -fPIC -shared -o $@  $(RELLDFLAGS) release-$(CROSS_COMPILER)/*.o
+	$(STRIP) $(RELTARGET)
+
+	
+$(DBGTARGET):	$(DBGOBJFILES)
+	$(LINK.c) -fPIC -shared -o $@  $(DBGLDFLAGS) debug-$(CROSS_COMPILER)/*.o
+	
+$(STATICTARGET):	$(RELOBJFILES)
+	$(AR) rcs ../lib/lib$(TARGET).a $(RELLDFLAGS) release-$(CROSS_COMPILER)/*.o
+
+$(DBGSTATICTARGET):	$(DBGOBJFILES)
+	$(AR) rcs ../libd/lib$(TARGET)d.a $(DBGLDFLAGS) debug-$(CROSS_COMPILER)/*.o
+
+$(RELOBJFILES):	release-$(CROSS_COMPILER)/%.o: %.cpp  $(HEADERS)
+	@mkdir -p release-$(CROSS_COMPILER)/
+	$(COMPILE.c) $(RELCFLAGS) -o $@ $<
+
+$(DBGOBJFILES):	debug-$(CROSS_COMPILER)/%.o: %.cpp  $(HEADERS)
+	@mkdir -p debug-$(CROSS_COMPILER)/
+	$(COMPILE.c) $(DBGCFLAGS) -o $@ $<
+
+clean:
+	-$(RM) -rf release* debug* *~ *.d .dep *.so* *.a*

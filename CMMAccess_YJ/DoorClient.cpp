@@ -43,32 +43,60 @@ namespace CMM
 	{
 		try
 		{
+			const size_t bufferSize = 1024; // 每次读取的缓冲区大小
+			const size_t maxMessageSize = 65536; // 单条消息的最大长度（64KB）
 			std::vector<char> recvBuffer;
-			char ch;
-			// 循环读取数据直到遇到换行符或发生错误
-			while ((ch =stream.get()) != EOF )
+			char buffer[bufferSize];
+			while (true)
 			{
-				if (ch == '\n') {
-					break; // 假设换行符是数据的结束标记
+				// 批量读取数据
+				stream.read(buffer, bufferSize);
+				std::streamsize bytesRead = stream.gcount();
+
+				if (bytesRead > 0)
+				{
+					// 将读取的数据添加到接收缓冲区
+					recvBuffer.insert(recvBuffer.end(), buffer, buffer + bytesRead);
+
+					// 检查是否收到结束标识
+					auto it = std::find(recvBuffer.begin(), recvBuffer.end(), 0xFE);
+					if (it != recvBuffer.end())
+					{
+						// 找到换行符，提取完整消息
+						std::string receivedData(recvBuffer.begin(), it);
+						LogInfo("Received TCP data: " << receivedData);
+
+						// 移除已处理的数据
+						recvBuffer.erase(recvBuffer.begin(), it + 1);
+						return 0; // 成功
+					}
+
+					// 检查消息是否过长
+					if (recvBuffer.size() > maxMessageSize)
+					{
+						LogError("Message size exceeds maximum limit.");
+						return -2; // 消息过长
+					}
 				}
-				recvBuffer.push_back(ch);
+				else if (bytesRead == 0)
+				{
+					// 流结束（对方关闭连接）
+					LogInfo("Connection closed by remote peer.");
+					return -1; // 连接关闭
+				}
+				else
+				{
+					// 读取失败
+					LogError("Failed to read data from TCP socket.");
+					return -3; // 读取失败
+				}
 			}
-			// 检查是否因为流结束而退出循环（这里不太可能，因为TCP是流式协议）
-			if (!stream.good())
-			{
-				LogError("Failed to read data from TCP socket.");
-				return -3;
-			}
-			// 将接收到的数据转换为字符串并打印
-			std::string receivedData(recvBuffer.begin(), recvBuffer.end());
-			LogInfo("Received TCP data: " << receivedData);
 		}
 		catch (Poco::Exception& exc)
 		{
 			LogError("TCP receive exception: " << exc.displayText());
 			return -4; // 发生异常
 		}
-		return 0;
 	}
 
 	int DoorClient::receiveUDPData(Poco::Net::DatagramSocket& socket)
@@ -138,7 +166,6 @@ namespace CMM
 			{
 				SocketAddress serverAddr(SocketAddress::IPv4, serverAddress, serverPort);
 				auto& socket = SingletonSocket::instance().getSocket();
-				socket.setReceiveTimeout(Poco::Timespan(5, 0));
 				std::vector<uint8_t> sendData = TransData::PackageSendData(uartData);
 				int sentBytes = socket.sendTo(sendData.data(), sendData.size(), serverAddr);
 				if (sentBytes < 0)
@@ -146,12 +173,15 @@ namespace CMM
 					LogError("send msg error: " << sentBytes);
 					return -1;
 				}
-				receiveUDPData(socket);
+				return receiveUDPData(socket);
 			}
-			catch (Poco::Exception& exc)
-			{
-				LogError("Exception msg: " << exc.displayText());
-				return -1;
+			catch (Poco::TimeoutException& exc) {
+				LogError("Timeout error: " << exc.displayText());
+				return -2; // 超时错误
+			}
+			catch (Poco::Exception& exc) {
+				LogError("General error: " << exc.displayText());
+				return -1; // 其他错误
 			}
 		}
 		else if (protocolType == "tcp")
@@ -162,15 +192,24 @@ namespace CMM
 				{
 					m_tcpManager = new TCPSocketManager(serverAddress, serverPort);
 				}
+				// 检查连接状态
+				if (!m_tcpManager->isConnected())
+				{
+					LogError("TCP connection is not established.");
+					return -1;
+				}
 				std::vector<uint8_t> sendData = TransData::PackageSendData(uartData);
 				m_tcpManager->getStream().write(reinterpret_cast<const char*>(sendData.data()), sendData.size());
 				m_tcpManager->getStream().flush();
-				receiveTCPData(m_tcpManager->getStream());
+				return receiveTCPData(m_tcpManager->getStream());
 			}
-			catch (Poco::Exception& exc)
-			{
-				LogError("Exception msg: " << exc.displayText());
-				return -1;
+			catch (Poco::TimeoutException& exc) {
+				LogError("Timeout error: " << exc.displayText());
+				return -2; // 超时错误
+			}
+			catch (Poco::Exception& exc) {
+				LogError("General error: " << exc.displayText());
+				return -1; // 其他错误
 			}
 		}
 		else
@@ -185,27 +224,24 @@ namespace CMM
 		Poco::URI uri(url);
 		std::string serverAddress = uri.getHost();
 		int serverPort = uri.getPort();
-		LogInfo("SEND data to serverAddress " << serverAddress << " and serverPort:" << serverPort);
+		LogInfo("SEND heart to serverAddress " << serverAddress << " and serverPort:" << serverPort);
 		if (protocolType == "udp")
 		{
 			try
 			{
 				SocketAddress serverAddr(SocketAddress::IPv4, serverAddress, serverPort);
 				auto& socket = SingletonSocket::instance().getSocket();
-				socket.setReceiveTimeout(Poco::Timespan(5, 0));
 				std::vector<uint8_t> sendData = TransData::PackageSendHeart();
-				int sentBytes = socket.sendTo(sendData.data(), sendData.size(), serverAddr);
-				if (sentBytes < 0)
-				{
-					LogError("send msg error: " << sentBytes);
-					return -1;
-				}
-				return receiveUDPData(socket);
+				socket.sendTo(sendData.data(), sendData.size(), serverAddr);
+				return 0;
 			}
-			catch (Poco::Exception& exc)
-			{
-				LogError("Exception msg: " << exc.displayText());
-				return -1;
+			catch (Poco::TimeoutException& exc) {
+				LogError("Timeout error: " << exc.displayText());
+				return -2; // 超时错误
+			}
+			catch (Poco::Exception& exc) {
+				LogError("General error: " << exc.displayText());
+				return -1; // 其他错误
 			}
 		}
 		else if (protocolType == "tcp")
@@ -216,15 +252,26 @@ namespace CMM
 				{
 					m_tcpManager = new TCPSocketManager(serverAddress, serverPort);
 				}
+				// 检查连接状态
+				if (!m_tcpManager->isConnected())
+				{
+					LogError("TCP connection is not established.");
+					return -1;
+				}
 				std::vector<uint8_t> sendData = TransData::PackageSendHeart();
+				Poco::Timespan timeout(3, 0); // 5秒超时
+				m_tcpManager->getStream().socket().setSendTimeout(timeout);
 				m_tcpManager->getStream().write(reinterpret_cast<const char*>(sendData.data()), sendData.size());
 				m_tcpManager->getStream().flush();
-				return receiveTCPData(m_tcpManager->getStream());
+				return 0;// receiveTCPData(m_tcpManager->getStream());
 			}
-			catch (Poco::Exception& exc)
-			{
-				LogError("Exception msg: " << exc.displayText());
-				return -1;
+			catch (Poco::TimeoutException& exc) {
+				LogError("Timeout error: " << exc.displayText());
+				return -2; // 超时错误
+			}
+			catch (Poco::Exception& exc) {
+				LogError("General error: " << exc.displayText());
+				return -1; // 其他错误
 			}
 		}
 		else

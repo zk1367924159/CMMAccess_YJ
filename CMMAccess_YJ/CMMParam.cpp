@@ -5,10 +5,13 @@
 #include "CMMParam.h"
 #include "CMMCommonStruct.h"
 #include "CMMConfig.h"
+#include "SysCommon.h"
+#include "CMMAccess.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/DateTimeFormatter.h"  
 #include "Poco/DateTime.h" 
 #include "../../ExtAppIpc/ExtAppIpcApi.h"
+//#include "ExtSoApi.h"
 #include "Poco/File.h"
 #include "Poco/FileStream.h"
 #include "Poco/StreamCopier.h"
@@ -23,6 +26,120 @@ namespace CMM{
 			_instance = new CMMParam();
 		}
 		return _instance;
+	}
+
+	int CMMParam::AddLinuxSysUser(CData user, CData passwd, CData dir)
+	{	
+		//system("mount -o remount,rw /");
+		//Poco::Thread::sleep(500);
+		if (user.empty()) return -1;
+		
+		FILE   *shellFile; 
+		int ret = 0;
+		CData cmd = "adduser " + user; 
+		if (dir.size()>0)
+		{
+			cmd += " -h " + dir;
+		}
+		if (passwd.empty())
+		{
+			cmd += " -D";
+		}
+		
+		if ((shellFile = popen(cmd.c_str(), "w") ) == nullptr) 
+		{ 
+			perror("popen");
+			LogError("popen error:"<<strerror(errno));
+			ret = -1; 
+		} 
+		else
+		{
+			LogInfo("Shell cmd: "<<cmd);
+	
+			if (passwd.size() > 0)
+			{
+				Poco::Thread::sleep(500);
+				passwd += "\r";
+				LogInfo("=====>shell write the passwd:"<<passwd);
+				fwrite(passwd.c_str(), 1, passwd.size(), shellFile);
+				
+				Poco::Thread::sleep(500);
+				LogInfo("=====>shell write the passwd again");
+				fwrite(passwd.c_str(), 1, passwd.size(), shellFile);
+			}
+			
+			if ((ret = pclose(shellFile)) == -1) 
+			{ 
+				LogError("close popen error, cmd:"<<cmd<<" ret:"<<ret);
+				ret = -2;
+			} 
+		}
+	
+		//system("mount -o remount,ro /");
+		//Poco::Thread::sleep(500);
+		
+		return ret;
+	}
+	
+	int CMMParam::DelLinuxSysUser(CData user)
+	{	
+		if (user.empty()) return -1;
+		//system("mount -o remount,rw /");
+		//Poco::Thread::sleep(500);
+		
+		CData cmd = "deluser " + user; 
+		ISFIT::Shell(cmd);	
+	
+		//system("mount -o remount,ro /");
+		//Poco::Thread::sleep(500);
+		
+		return 0;
+	}
+	
+	
+	
+	int CMMParam::ModifyLinuxSysPasswd(CData user, CData passwd)
+	{	
+		//system("mount -o remount,rw /");
+		//Poco::Thread::sleep(500);
+		if (user.empty() || passwd.empty()) return -1;
+
+		
+		FILE   *shellFile; 
+		int ret = 0;
+	
+		CData cmd = "passwd " + user; 
+		
+		if ((shellFile = popen(cmd.c_str(), "w") ) == nullptr) 
+		{ 
+			perror("popen");
+			LogError("popen error:"<<strerror(errno));
+			ret = -1; 
+		} 
+		else
+		{
+			LogInfo("Shell cmd: "<<cmd);
+			
+			Poco::Thread::sleep(500);
+			passwd += "\r";
+			LogInfo("=====>modify passwd:"<<passwd);
+			fwrite(passwd.c_str(), 1, passwd.size(), shellFile);
+			
+			Poco::Thread::sleep(500);
+			LogInfo("=====>modify passwd again");
+			fwrite(passwd.c_str(), 1, passwd.size(), shellFile);
+			
+			if ((ret = pclose(shellFile)) == -1) 
+			{ 
+				LogError("close popen error, cmd:"<<cmd<<" ret:"<<ret);
+				ret = -2;
+			} 
+		}
+	
+		//system("mount -o remount,ro /");
+		//Poco::Thread::sleep(500);
+		
+		return ret;
 	}
 
 	void CMMParam::initParam()
@@ -84,7 +201,7 @@ namespace CMM{
 		m_StopBit = GetParam(CMM::param::StopBit, "");
 		m_SlaveID = GetParam(CMM::param::SlaveID, "");
 
-		m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
+		m_ScUdpPoint = m_ScProtocol + "://" + m_ScDoorIp + ":" + m_ScDoorPort;// Í¸´«
 	}
 
 	void CMMParam::initJsonFile()
@@ -192,7 +309,8 @@ namespace CMM{
 	{
 		initParam();
 		initJsonFile();
-		return writeJson2File();
+		return true;
+		//return writeJson2File();
 	}
 
 	std::string CMMParam::LoadParams()
@@ -222,13 +340,14 @@ namespace CMM{
 					continue;
 				}
 				std::string val = value.get<std::string>();
-				LogInfo("key : " << key <<  "val: " << val);
+				
 				if (m_json[key].get<std::string>() != val)
 				{
+					LogInfo("key : " << key <<  "val: " << val);
 					UpdateParam(key.c_str(), val.c_str());
 				}
 			}
-			writeJson2File();
+			//writeJson2File();
 		}
 		catch (const std::exception& e)
 		{
@@ -258,26 +377,26 @@ namespace CMM{
 		{
 			m_ScDoorIp = val.c_str();
 			m_json[CMM::param::SCDoorIp] = m_ScDoorIp.c_str();
-			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
-
+			m_ScUdpPoint = m_ScProtocol + "://" + m_ScDoorIp + ":" + m_ScDoorPort;
 		}
 		else if (key == CMM::param::SCDoorPort)
 		{
 			m_ScDoorPort = val.c_str();
 			m_json[CMM::param::SCDoorPort] = m_ScDoorPort.c_str();
-			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
+			m_ScUdpPoint = m_ScProtocol + "://" + m_ScDoorIp + ":" + m_ScDoorPort;
 		}
 		else if (key == CMM::param::SCDoorTransPort)
 		{
 			m_ScDoorTransPort = val.c_str();
 			m_json[CMM::param::SCDoorTransPort] = m_ScDoorTransPort.c_str();
+			CMMAccess::instance()->setDoorServeParam(key,m_ScProtocol,val);
 		}
 		else if (key == CMM::param::SCProtocol)
 		{
 			m_ScProtocol = val.c_str();
 			m_json[CMM::param::SCProtocol] = m_ScProtocol.c_str();
-			m_ScUdpPoint = m_ScProtocol+ "://"+ m_ScDoorIp + ":"+ m_ScDoorPort + "/v1/services/newLSCService";//LSCService
-
+			m_ScUdpPoint = m_ScProtocol + "://" + m_ScDoorIp + ":" + m_ScDoorPort;
+			CMMAccess::instance()->setDoorServeParam(key,val,m_ScDoorTransPort);
 		}
 		else if (key == CMM::param::AuthEnable)
 		{
@@ -323,16 +442,23 @@ namespace CMM{
 		{
 			m_FsuEndPoint = val.c_str();
 			m_json[CMM::param::FsuEndPoint] = m_FsuEndPoint.c_str();
+			CMMAccess::instance()->setHttpParam(key,val);
 		}
 		else if (key == CMM::param::FtpUsr)
 		{
-			m_FtpUsr = val.c_str();
 			m_json[CMM::param::FtpUsr] = m_FtpUsr.c_str();
+			DelLinuxSysUser(m_FtpUsr);
+			m_FtpUsr = val.c_str();
+			if (m_FtpType == "ftp")
+				AddLinuxSysUser(m_FtpUsr, m_FtpPasswd, "/home/ftp");
+			else
+				AddLinuxSysUser(m_FtpUsr, m_FtpPasswd, "/userdata/ftp");
 		}
 		else if (key == CMM::param::FtpPasswd)
 		{
 			m_FtpPasswd = val.c_str();
 			m_json[CMM::param::FtpPasswd] = m_FtpPasswd.c_str();
+			ModifyLinuxSysPasswd(m_FtpUsr,m_FtpPasswd);
 		}
 		else if (key == CMM::param::FtpType)
 		{
@@ -385,17 +511,16 @@ namespace CMM{
 			m_UpdateInterval = val.c_str();
 			m_json[CMM::param::UpdateInterval] = m_UpdateInterval.c_str();
 		}
-
-		else if (key == CMM::param::WebDeviceConfig)
+		/*else if (key == CMM::param::WebDeviceConfig)
 		{
 			m_WebDeviceConfig = val.c_str();
 			m_json[CMM::param::WebDeviceConfig] = m_WebDeviceConfig.c_str();
 		}
-		/*else if (key == CMM::param::WebQueueDepth)
+		else if (key == CMM::param::WebQueueDepth)
 		{
 			m_WebQueueDepth = val.c_str();
 			m_json[CMM::param::WebQueueDepth] = m_WebQueueDepth.c_str();
-		}*/
+		}
 		else if (key == CMM::param::WebInterval)
 		{
 			m_WebInterval = val.c_str();
@@ -406,7 +531,7 @@ namespace CMM{
 			m_WebHost = val.c_str();
 			m_json[CMM::param::WebHost] = m_WebHost.c_str();
 		}
-		/*else if (key == CMM::param::WebHtdocs)
+		else if (key == CMM::param::WebHtdocs)
 		{
 			m_WebHtdocs = val.c_str();
 			m_json[CMM::param::WebHtdocs] = m_WebHtdocs.c_str();
@@ -420,18 +545,18 @@ namespace CMM{
 		{
 			m_WebPort = val.c_str();
 			m_json[CMM::param::WebPort] = m_WebPort.c_str();
+			CMMAccess::instance()->setWebParam(key,val);
 		}
 		/*else if (key == CMM::param::WebStorageDevice)
 		{
 			m_WebStorageDevice = val.c_str();
 			m_json[CMM::param::WebStorageDevice] = m_WebStorageDevice.c_str();
-		}*/
+		}
 		else if (key == CMM::param::WebVersion)
 		{
 			m_WebVersion = val.c_str();
 			m_json[CMM::param::WebVersion] = m_WebVersion.c_str();
-		}
-
+		}*/
 		else if (key == CMM::param::SiteID)
 		{
 			m_SiteID = val.c_str();
@@ -456,31 +581,37 @@ namespace CMM{
 		{
 			m_UartName = val.c_str();
 			m_json[CMM::param::UartName] = m_UartName.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else if (key == CMM::param::BaudRate)
 		{
 			m_BaudRate = val.c_str();
 			m_json[CMM::param::BaudRate] = m_BaudRate.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else if (key == CMM::param::DataBit)
 		{
 			m_DataBit = val.c_str();
 			m_json[CMM::param::DataBit] = m_DataBit.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else if (key == CMM::param::Parity)
 		{
 			m_Parity = val.c_str();
 			m_json[CMM::param::Parity] = m_Parity.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else if (key == CMM::param::StopBit)
 		{
 			m_StopBit = val.c_str();
 			m_json[CMM::param::StopBit] = m_StopBit.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else if (key == CMM::param::SlaveID)
 		{
 			m_SlaveID = val.c_str();
 			m_json[CMM::param::SlaveID] = m_SlaveID.c_str();
+			CMMAccess::instance()->setUartParam(key,val);
 		}
 		else
 		{
@@ -499,6 +630,7 @@ namespace CMM{
 
 	int CMMParam::SetParam(CData key, CData val)
 	{
+		LogInfo("SetParam: "  << key.c_str() << " value:" << val.c_str());
 		if (0 == APPAPI::SaveExtAppParam(key, val))
 		{
 			m_json[key.c_str()] = val.c_str();

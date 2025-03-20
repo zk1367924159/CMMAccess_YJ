@@ -45,9 +45,6 @@ namespace CMM{
 		static CMMAccess* instance();
 		CData GetNetIfcParam(CData ifconfig, CData key);
 		void AddRoute(CData destIp, CData gateWay);
-		int AddLinuxSysUser(CData user, CData passwd, CData dir);
-		int DelLinuxSysUser(CData user);
-		int ModifyLinuxSysPasswd(CData user, CData passwd);
 		CData GetIfcIp(CData ifcName);
 		CData GetLocalMac();
 
@@ -79,6 +76,13 @@ namespace CMM{
 		bool SendUartDataToSC(std::vector<uint8_t>& sendBuffer);
 		bool writeDataToUart(std::vector<uint8_t>& sendBuffer);
 		void SaveDataLog(std::map<CData, CData>& msg);
+
+		void setUartParam(CData key, CData value);//设置串口服务参数
+		void setWebParam(CData key, CData value);//设置web服务参数
+		void setHttpParam(CData key, CData value);//设置http服务参数
+		void setDoorServeParam(CData key, CData value, CData port);//设置门禁服务参数 额外带上当前透传平台端口
+		void RemoveAlarms(); //移除告警
+		int SendGetDeviceData(std::map<std::string, std::list<std::string>>& devList);
 	private:
 		CMMAccess();
 		bool Init();
@@ -88,6 +92,7 @@ namespace CMM{
 		void Test();
 		void SetLoginState(bool isLoginOk);
 		void ReportAlarms();
+		
 		void SetPowerdownAlarmParam(int arg);
 		void UpdateDevConf(int arg);
 		void WriteMeasureFile(int arg);

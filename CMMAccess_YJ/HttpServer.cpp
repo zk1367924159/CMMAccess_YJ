@@ -10,6 +10,7 @@
 using namespace Poco::Net;
 
 
+#define TEST 1
 
 namespace CMM
 {
@@ -119,6 +120,11 @@ namespace CMM
 			CData path = uri.getPath();
 			if (path != "/v1/services/newFSUService" && path != "/services/FSUService")
 			{
+				if (TEST)
+				{
+					handleTestRequest(request,response);
+					return;
+				}
 				response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
 				response.send();
 				return;
@@ -132,6 +138,158 @@ namespace CMM
 				out << "Device not registered or registration expired";
 				return;
 			}*/
+			if (request.getContentLength() == 0)
+			{
+				response.setStatusAndReason(HTTPResponse::HTTP_BAD_REQUEST);
+				response.send();
+				return;
+			}
+			static char msgBuf[CMCC_MAX_RESPONSE_BUFFER_SIZE];
+			//解析请求体
+			std::string requestBody;
+			try
+			{
+				// 直接读取整个响应体到字符串
+				std::istream& rs = request.stream();
+				requestBody.resize(static_cast<std::size_t>(request.getContentLength()));
+				rs.read(&requestBody[0], requestBody.size());
+
+				// 如果实际读取的字节数小于请求头中的Content-Length，说明可能读取不完整
+				if (rs.gcount() != static_cast<std::streamsize>(requestBody.size()))
+				{
+					// 处理读取不完整的情况...
+					response.setStatusAndReason(HTTPResponse::HTTP_BAD_REQUEST);
+					response.send();
+					return;
+				}
+				else
+				{
+					// 现在responseBody包含了整个XML内容，可以进行后续处理
+					CData xmlData, auth_header, token;
+					xmlData = requestBody;
+					CMMAccess::instance()->UpdateAuthHeader(xmlData, auth_header, token);
+					if (CMMParam::instance()->m_SoapEnable == "true")
+					{
+						xmlData = CMMSoapXmlEncode::soapServerResquestDeserialization((char*)requestBody.c_str());
+					}
+					std::string strAuth = request.get("Authorization");
+					if (strAuth.empty())
+					{
+						CMMAccess::instance()->DoMsgProcess_Error((char*)xmlData.c_str(), msgBuf, (int)CMCC_MAX_RESPONSE_BUFFER_SIZE,2);
+						response.setStatusAndReason(HTTPResponse::HTTP_OK);
+						response.setContentType("application/xml; charset=UTF-8");
+						std::ostream& out = response.send();
+						if (CMMParam::instance()->m_SoapEnable == "true")
+						{
+							xmlData = CMMSoapXmlEncode::setSoapSerialization(msgBuf, 0);
+							out.write(xmlData.c_str(), xmlData.length());
+						}
+						else
+						{
+							out.write(msgBuf, strlen(msgBuf)); // 直接使用write方法发送缓冲区内容，避免字符串拷贝
+						}
+						return;
+					}
+					CData requestToken = extractTokenFromCustomAuth(strAuth);
+					LogInfo("recv Authorization:" << strAuth.c_str());
+					LogInfo("recv Auth token:" << requestToken.c_str() << " and Calculate the token:" << token.c_str());
+					memset(msgBuf, 0, strlen(msgBuf));
+					if (requestToken != token)
+					{
+						CMMAccess::instance()->DoMsgProcess_Error((char*)xmlData.c_str(), msgBuf, (int)CMCC_MAX_RESPONSE_BUFFER_SIZE,3);
+						response.setStatusAndReason(HTTPResponse::HTTP_OK);
+						response.setContentType("application/xml; charset=UTF-8");
+						std::ostream& out = response.send();
+						if (CMMParam::instance()->m_SoapEnable == "true")
+						{
+							xmlData = CMMSoapXmlEncode::setSoapSerialization(msgBuf, 0);
+							out.write(xmlData.c_str(), xmlData.length());
+						}
+						else
+						{
+							out.write(msgBuf, strlen(msgBuf)); // 直接使用write方法发送缓冲区内容，避免字符串拷贝
+						}
+						return;
+					}
+					int ret = CMMAccess::instance()->DoMsgProcess((char*)xmlData.c_str(), msgBuf, (int)CMCC_MAX_RESPONSE_BUFFER_SIZE);
+					if (ret < 0)
+					{
+						CMMAccess::instance()->DoMsgProcess_Error((char*)xmlData.c_str(), msgBuf, (int)CMCC_MAX_RESPONSE_BUFFER_SIZE,0);
+						response.setStatusAndReason(HTTPResponse::HTTP_OK);
+						response.setContentType("application/xml; charset=UTF-8");
+						std::ostream& out = response.send();
+						if (CMMParam::instance()->m_SoapEnable == "true")
+						{
+							xmlData = CMMSoapXmlEncode::setSoapSerialization(msgBuf, 0);
+							out.write(xmlData.c_str(), xmlData.length());
+						}
+						else
+						{
+							out.write(msgBuf, strlen(msgBuf)); // 直接使用write方法发送缓冲区内容，避免字符串拷贝
+						}
+						return;
+					}
+					response.setStatusAndReason(HTTPResponse::HTTP_OK);
+					response.setContentType("application/xml; charset=UTF-8");
+					std::ostream& out = response.send();
+					if (CMMParam::instance()->m_SoapEnable == "true")
+					{
+						xmlData = CMMSoapXmlEncode::setSoapSerialization(msgBuf, 0);
+						out.write(xmlData.c_str(), xmlData.length());
+					}
+					else
+					{
+						out.write(msgBuf, strlen(msgBuf));
+					}
+				}
+			}
+			catch (Poco::Exception& e)
+			{
+				// 处理异常情况
+				response.setStatusAndReason(HTTPResponse::HTTP_BAD_REQUEST);
+				response.setContentType("application/xml; charset=UTF-8");
+				response.send();
+				return;
+			}
+		}
+		else
+		{
+			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
+			response.setContentType("application/xml; charset=UTF-8");
+			response.send();
+		}
+
+		// 检查响应是否成功发送  
+		if (response.sent())
+		{
+			LogNotice("Response send successfully.");
+		}
+		else
+		{
+			LogNotice("Failed to send response.");
+			HttpServer::DisConnection();
+		}
+	}
+
+	void CHTTPRequestHandler::handleTestRequest(HTTPServerRequest& request, HTTPServerResponse& response)
+	{
+
+		CData requestUri = request.getURI();
+		CData method = request.getMethod().c_str();
+		LogInfo("method : " << method);
+		if (method == "GET")
+		{
+			// 设置响应状态码和头部  
+			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
+			response.setContentType("application/xml; charset=UTF-8");
+			response.send();
+			return;
+		}
+		else if (method == "POST")
+		{
+			Poco::URI uri(requestUri.c_str());
+			CData path = uri.getPath();
+		
 			if (request.getContentLength() == 0)
 			{
 				response.setStatusAndReason(HTTPResponse::HTTP_BAD_REQUEST);
@@ -264,7 +422,6 @@ namespace CMM
 			HttpServer::DisConnection();
 		}
 	}
-
 	bool HttpServer::m_bConnection = true;
 
 	HttpServer::HttpServer()
@@ -297,6 +454,7 @@ namespace CMM
 	{
 		Poco::URI uri(endpoint.c_str());
 		int port = uri.getPort();
+		LogInfo("HttpServer start " << port);
 		if (port < 1)
 		{
 			LogError("cmm service endpoint an service port must be setted");

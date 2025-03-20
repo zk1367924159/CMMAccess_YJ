@@ -27,12 +27,12 @@ namespace CMM
         virtual void run();
         void Start();
         void Stop();
-        void setSlaveID(const int& slaveID);
-        void setBaudrate(const int& baudrate);
-        void setDataBits(const int& dataBits);
-        void setStopBits(const int& stopBits);
-        void setParity(const std::string& parity);
-        void setUartName(const std::string& uartname);
+        void setSlaveID(int slaveID);
+        void setBaudrate(int baudrate);
+        void setDataBits(int dataBits);
+        void setStopBits(int stopBits);
+        void setParity(std::string parity);
+        void setUartName(std::string uartname);
         std::string getUartName(CData uartname);
 
         bool writeData(std::vector<uint8_t>& uartData);
