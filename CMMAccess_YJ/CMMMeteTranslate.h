@@ -17,6 +17,8 @@ namespace CMM
 		static int FromInnerPortTypeToCMM(int type, int dataType);
 
 		static int ConvertToCmmMeterType(CData meterType);
+		
+		static std::string ConvertToMeterType(int meterType);
 
 		static CData FromInnerToCMM(int id, int &SignalNumber);
 

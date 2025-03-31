@@ -59,30 +59,29 @@ namespace CMM
 		int DoRequest(ISFIT::CXmlElement& element, char* returnBuf, int size);
 		int DoResponse(ISFIT::CXmlElement& element);
 		int OnLoginRsp(ISFIT::CXmlElement& info);
+
 		int OnGetDevConf(CMMMsg& request, CMMMsg & response);
-		int OnGetFSUInfo(CMMMsg& request, CMMMsg & response);
 		int OnSetDevConf(CMMMsg& request, CMMMsg & response);
 		int OnGetData(CMMMsg& request, CMMMsg & response);
 		int OnSetPoint(CMMMsg& request, CMMMsg & response);
-		int OnTimeCheck(CMMMsg& request, CMMMsg & response);
-		int OnReboot(CMMMsg& request, CMMMsg & response);
 		int OnGetThreshold(CMMMsg& request, CMMMsg & response);
 		int OnSetThreshold(CMMMsg& request, CMMMsg & response);
 		int OnGetFtpInfo(CMMMsg& request, CMMMsg &response);
 		int OnSetFtpInfo(CMMMsg& request, CMMMsg& response);
-		int OnSetLoginInfo(CMMMsg& request, CMMMsg& response);
 		int OnGetLoginInfo(CMMMsg& request, CMMMsg& response);
-		int OnSetStorageRule( CMMMsg& request, CMMMsg& response );
+		int OnSetLoginInfo(CMMMsg& request, CMMMsg& response);
 		int OnGetStorageRule( CMMMsg& request, CMMMsg& response );
+		int OnSetStorageRule( CMMMsg& request, CMMMsg& response );
+		
+		int OnGetFSUInfo(CMMMsg& request, CMMMsg & response);
 		int OnUpdateFsuInterval(CMMMsg& request, CMMMsg& response);
-
-		//new
+		int OnTimeCheck(CMMMsg& request, CMMMsg & response);
+		int OnReboot(CMMMsg& request, CMMMsg & response);
 		int OnGetTime(CMMMsg& request, CMMMsg& response);
 		int OnSetAcceptIP(CMMMsg& request, CMMMsg& response);
 		int OnSetFsuReboot(CMMMsg& request, CMMMsg& response);
-
 		int OnLogin(CMMMsg& request, CMMMsg& response);
-		
+
 	private:
 		bool ThresholdIdFilter(std::map<CData,CData>& attr);
 	};

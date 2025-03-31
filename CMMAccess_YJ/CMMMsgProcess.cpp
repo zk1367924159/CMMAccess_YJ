@@ -164,37 +164,30 @@ namespace CMM
 		return 1;
 	}
 
-	int MsgProcess::OnLoginRsp(ISFIT::CXmlElement& info)
-	{
-		return info.GetSubElement("Result").GetElementText().convertInt();
-	}
+	
 
 	MsgProcess::MsgProcess()
 	{
 		m_msgMap[CMM::method::GET_DEV_CONF] = &MsgProcess::OnGetDevConf;
-		m_msgMap[CMM::method::GET_FSUINFO] = &MsgProcess::OnGetFSUInfo;
 		m_msgMap[CMM::method::SET_DEV_CONF_DATA] = &MsgProcess::OnSetDevConf;
 		m_msgMap[CMM::method::GET_DATA] = &MsgProcess::OnGetData;
-		m_msgMap[CMM::method::TIME_CHECK] = &MsgProcess::OnTimeCheck;
-		m_msgMap[CMM::method::SET_FSUREBOOT] = &MsgProcess::OnReboot;
 		m_msgMap[CMM::method::SET_POINT] = &MsgProcess::OnSetPoint;
 		m_msgMap[CMM::method::GET_THRESHOLD] = &MsgProcess::OnGetThreshold;
 		m_msgMap[CMM::method::SET_THRESHOLD] = &MsgProcess::OnSetThreshold;
-		m_msgMap[CMM::method::SET_FTP] = &MsgProcess::OnSetFtpInfo;
 		m_msgMap[CMM::method::GET_FTP] = &MsgProcess::OnGetFtpInfo;
-		m_msgMap[CMM::method::SET_LOGININFO] = &MsgProcess::OnSetLoginInfo;
+		m_msgMap[CMM::method::SET_FTP] = &MsgProcess::OnSetFtpInfo;
 		m_msgMap[CMM::method::GET_LOGININFO] = &MsgProcess::OnGetLoginInfo;
-		m_msgMap[CMM::method::UPDATE_FSUINFO_INTERVAL] = &MsgProcess::OnUpdateFsuInterval;
-
-		//canyon
+		m_msgMap[CMM::method::SET_LOGININFO] = &MsgProcess::OnSetLoginInfo;
 		m_msgMap[CMM::method::GET_STORAGERULE] = &MsgProcess::OnGetStorageRule;
 		m_msgMap[CMM::method::SET_STORAGERULE] = &MsgProcess::OnSetStorageRule;
 
-		//add new 
+		m_msgMap[CMM::method::GET_FSUINFO] = &MsgProcess::OnGetFSUInfo;
+		m_msgMap[CMM::method::UPDATE_FSUINFO_INTERVAL] = &MsgProcess::OnUpdateFsuInterval;
+		m_msgMap[CMM::method::TIME_CHECK] = &MsgProcess::OnTimeCheck;
+		m_msgMap[CMM::method::SET_FSUREBOOT] = &MsgProcess::OnReboot;
 		m_msgMap[CMM::method::GET_TIME] = &MsgProcess::OnGetTime;
 		m_msgMap[CMM::method::SET_ACCEPT_IP_CONF] = &MsgProcess::OnSetAcceptIP;
 		m_msgMap[CMM::method::SET_FSUREBOOT] = &MsgProcess::OnSetFsuReboot;
-
 		m_msgMap[CMM::method::LOGIN] = &MsgProcess::OnLogin;
 	}
 
@@ -239,6 +232,26 @@ namespace CMM
 		}
 		return -1;
 	}
+		
+	int MsgProcess::OnLoginRsp(ISFIT::CXmlElement& info)
+	{
+		return info.GetSubElement("Result").GetElementText().convertInt();
+	}
+
+	bool MsgProcess::ThresholdIdFilter(std::map<CData,CData>& attr)
+	{
+		CData meterId = attr["meterId"];
+		if (meterId.length()<9)
+		{
+			return false;
+		}
+		CData meterType = attr["meterType"];
+		CData subId = meterId.substr(0, 3);
+		//LogInfo("----subId:"<<subId<<" meterType:"<<meterType);
+		if (meterType == "DI")
+			return true;
+		return false;
+	}
 
 	int MsgProcess::OnGetDevConf( CMMMsg& request, CMMMsg & response )
 	{
@@ -271,14 +284,6 @@ namespace CMM
 		CData rsp = CMMProtocolEncode::GetDevConf(devList);
 		response.SetResponseXml(rsp);
 #endif
-		return 0;
-	}
-
-	int MsgProcess::OnGetFSUInfo( CMMMsg& request, CMMMsg & response )
-	{
-		CData rsp = CMMProtocolEncode::GetFsuInfo();
-		response.SetResponseXml(rsp);
-		CMMAccess::instance()->OnHeartBeat();
 		return 0;
 	}
 
@@ -324,176 +329,401 @@ namespace CMM
 		CProtocolDecode::DecodeGetDeviceList(deviceList, reqDevMap);
 		
 		std::map<CData, std::list<TSemaphore> > rspDevMap;
+		CMMConfig::instance()->GetSemaphoreConf(reqDevMap);
 		bool bOK=true;
-	
+		CData rsp;
+		int nResult = CMM::SUCCESS;
 		if (0 == reqDevMap.size())
 		{
-			std::list <CData> devIdList;
-			APPAPI::GetDevId("alias", devIdList);
-			LogInfo("=== reqDevMap size == 0 ==, devIdList.size():"<<devIdList.size());
-			for (auto it=devIdList.begin(); it!=devIdList.end(); it++)
+			if (rspDevMap.size() == 0)
 			{
-				CData aliasDevId = *it;
-				std::list<TSemaphore> rspSemaphoreList;
-		     	LogInfo("--------AliasDevid:"<<aliasDevId);
-
-				std::set<CData> attrSet;
-				attrSet.insert("meterId");
-				attrSet.insert("val");
-				attrSet.insert("time");
-				attrSet.insert("setupVal");
-				attrSet.insert("alarmLevel");
-				attrSet.insert("meterType");
-				
-				std::list<std::map<CData,CData> > paramList;
-				APPAPI::GetMeterInfo(aliasDevId, "alias",attrSet, paramList,5000);
-				for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
+				nResult = CMM::NODATA;
+			}
+			for (auto iter = rspDevMap.begin(); iter != rspDevMap.end(); ++iter)
+			{
+				std::list<TSemaphore>& list = iter->second;
+				for (auto it = list.begin(); it != list.end(); ++it)
 				{
-					std::map<CData,CData>& attr = *mit;		
-
-					CData meterId = attr["meterId"];
-					//LogInfo("--------meterId:"<<meterId);
-					int len = meterId.length();
-					CData id = meterId.substr(0, 3);
-					int iID = id.convertInt();
-					if(len>3&&Is_rangeData(iID))
-					{							
-						TSemaphore rspSemaphore;
-						int len=meterId.length();
-						rspSemaphore.ID =meterId.substr(0,len-3);
-						rspSemaphore.SignalNumber = meterId.substr(len-3,3).convertInt();
-						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-						//int alarmLevel = attr["alarmLevel"].convertInt();
-						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-						if (nType < 5)
-						{
-							type = nType;
-						}
-						else if (nType == 5)
-						{
-							type = CMM::ALARM;
-						}
-						CMMConfig::instance()->SetMeteValues(attr, rspSemaphore, type);
-						rspSemaphoreList.push_back(rspSemaphore);
-					}
-				}
-				if (rspSemaphoreList.size()>0)
-				{
-					rspDevMap[aliasDevId] = rspSemaphoreList;
+					it->result = 1;
 				}
 			}
+			 rsp = CMMProtocolEncode::BuildGetDataRsp(nResult, rspDevMap);
 		}
 		else
 		{
-			for (auto it=reqDevMap.begin(); it!=reqDevMap.end(); it++)
+			if (rspDevMap.size() == 0)
 			{
-				std::list<TSemaphore> rspSemaphoreList;
-				
-				const CData& devId = it->first;
-				std::list<TSemaphore>& reqMeterIdList = it->second;
-				if (reqMeterIdList.size() > 0)
-				{	
-					TDevConf cfg = { };
-					int signalNum=1;
-					if(CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
+				nResult = CMM::NODATA;
+			}
+			else
+			{
+				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				{
+					CData deviceId = iter->first;
+					std::list<TSemaphore>& recvConfig = iter->second;
+					auto key = rspDevMap.find(deviceId);
+					if (key == rspDevMap.end())
 					{
-						LogError("get dev config failed id:"<<devId);
-						//return -1;
-						bOK=false;
 						continue;
 					}
-					//LogInfo("this is " << devId.c_str() << " have dev size: " << reqMeterIdList.size());
-					for (auto mit=reqMeterIdList.begin(); mit!=reqMeterIdList.end(); mit++)
+					std::list<TSemaphore>& config = key->second;
+					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
 					{
-						TSemaphore& reqMeterId = *mit;						
-						char tmp[32]={0};
-						sprintf(tmp,"%03d",signalNum);
-						CData strSignalNumber=CData(tmp);	
-						CData meterId = reqMeterId.ID+strSignalNumber;	
-						std::map<CData,CData> attr;
-						// APPAPI::GetMeterVal(devId, meterId, "alias",attr);
-						// DAHAI
-						APPAPI::GetMeterInfo(devId, meterId, "alias", attr);						
-						if(attr["meterId"]!="")
+						for (auto its = config.begin(); its != config.end(); ++its)
 						{
-							TSemaphore rspSemaphore;
-							rspSemaphore.ID = reqMeterId.ID;
-							rspSemaphore.SignalNumber = signalNum;
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
+							if (it->ID == its->ID)
 							{
-								type = nType;
+								it = its;
+								it->result = 1;
 							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteValues(attr, rspSemaphore, type);
-							rspSemaphoreList.push_back(rspSemaphore);
-						}
-						else{
-							bOK=false;
 						}
 					}
-				}
-				else
-				{
-					std::set<CData> attrSet;
-					attrSet.insert("meterId");
-					attrSet.insert("val");
-					attrSet.insert("time");
-					attrSet.insert("setupVal");
-					attrSet.insert("alarmLevel");
-					attrSet.insert("meterType");
-					
-					std::list<std::map<CData,CData> > paramList;
-					APPAPI::GetMeterInfo(devId, "alias",attrSet, paramList,5000);
-					for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
-					{
-						std::map<CData,CData>& attr = *mit;
-						CData meterId=attr["meterId"];
-							
-						int len=meterId.length();
-						CData id=meterId.substr(0,3);
-						int iID=id.convertInt();
-						if(len>3&&Is_rangeData(iID))
-						{								
-							TSemaphore rspSemaphore;
-							int len=meterId.length();
-							rspSemaphore.ID =meterId.substr(0,len-3);
-							rspSemaphore.SignalNumber = meterId.substr(len-3,3).convertInt();
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
-							{
-								type = nType;
-							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteValues(attr, rspSemaphore, type);
-							rspSemaphoreList.push_back(rspSemaphore);
-						}
-					}
-				}
-				if (rspSemaphoreList.size()>0)
-				{
-					rspDevMap[devId] = rspSemaphoreList;
 				}
 			}
+			rsp = CMMProtocolEncode::BuildGetDataRsp(nResult, reqDevMap);
 		}
-		int nResult = bOK ? CMM::SUCCESS : CMM::FAILURE;
-		if (rspDevMap.size() == 0)
-			nResult = CMM::NODATA;
-		CData rsp = CMMProtocolEncode::BuildGetDataRsp(nResult, rspDevMap);
 		response.SetResponseXml(rsp);
 		return 0;
 	}
 
+	int MsgProcess::OnSetPoint( CMMMsg& request, CMMMsg & response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		ISFIT::CXmlElement value = info.GetSubElement("Value");
+		ISFIT::CXmlElement deviceList = value.GetSubElement("DeviceList");
+		std::map<CData, std::list<TSemaphore> > devMap;
+		CProtocolDecode::DecodeSetPoint(deviceList, devMap);
+		bool bOK = true;
+		CData failedCause="NULL";
+		if(devMap.size() == 0)
+		{
+			failedCause="请求体未识别到设备id";
+			bOK = false;
+		}
+		else
+		{
+			auto pos = devMap.begin();
+			while (pos != devMap.end())
+			{
+				std::list<TSemaphore> & pointList = pos->second;
+				int ret = CMMConfig::instance()->SetSemaphoreConf(pos->first, pointList);
+				if (ret < 0)
+				{
+					bOK = false;
+					if (ret == -2)
+						failedCause = "设置值不符合范围";
+					else
+						failedCause = "未查找到对应设备或id";
+				}
+				pos++;
+			}
+		}
+		if (bOK)
+		{
+			CMMConfig::instance()->UpdateCfgFile();
+		}
+		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_POINT_ACK, devMap);
+		response.SetResponseXml(rsp);
+		//if(devMap.size() !=0)
+		//	CMMAccess::instance()->NotifySendData(devMap);  //写监控数据后 上报操作设备的监控点数据
+		return 0;
+	}
+
+	int MsgProcess::OnGetThreshold( CMMMsg& request, CMMMsg & response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		ISFIT::CXmlElement deviceList = info.GetSubElement("DeviceList");
+
+		std::map<CData, std::list<TThreshold> > reqDevMap;
+		CProtocolDecode::DecodeGetDeviceList(deviceList, reqDevMap);	
+	
+		std::map<CData, std::list<TThreshold>> rspDevMap;
+		CMMConfig::instance()->GetThresholdConf(rspDevMap);
+		bool bOK=true;
+		CData rsp;
+		int nResult = CMM::SUCCESS;
+		if (0 == reqDevMap.size())
+		{
+			if (rspDevMap.size() == 0)
+			{
+				nResult = CMM::NODATA;
+			}
+			for (auto iter = rspDevMap.begin(); iter != rspDevMap.end(); ++iter)
+			{
+				std::list<TThreshold>& list = iter->second;
+				for (auto it = list.begin(); it != list.end(); ++it)
+				{
+					it->result = 1;
+				}
+			}
+			 rsp = CMMProtocolEncode::BuildGetThresholdRsp(nResult, rspDevMap);
+		}
+		else
+		{
+			if (rspDevMap.size() == 0)
+			{
+				nResult = CMM::NODATA;
+			}
+			else
+			{
+				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				{
+					CData deviceId = iter->first;
+					std::list<TThreshold>& recvConfig = iter->second;
+					auto key = rspDevMap.find(deviceId);
+					if (key == rspDevMap.end())
+					{
+						continue;
+					}
+					std::list<TThreshold>& config = key->second;
+					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
+					{
+						for (auto its = config.begin(); its != config.end(); ++its)
+						{
+							if (it->ID == its->ID)
+							{
+								it = its;
+								it->result = 1;
+							}
+						}
+					}
+				}
+			}
+			rsp = CMMProtocolEncode::BuildGetThresholdRsp(nResult, reqDevMap);
+		}
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+	
+	int MsgProcess::OnSetThreshold( CMMMsg& request, CMMMsg & response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		ISFIT::CXmlElement value = info.GetSubElement("Value");
+		ISFIT::CXmlElement deviceList = value.GetSubElement("DeviceList");
+		std::map<CData, std::list<TThreshold> > devMap;
+		CProtocolDecode::DecodeSetThreshold(deviceList, devMap);
+		bool bOK = true;
+		CData failedCause="NULL";
+		if(devMap.size() == 0)
+		{
+			failedCause="请求体未识别到设备id";
+			bOK = false;
+		}
+		else
+		{
+			auto pos = devMap.begin();
+			while (pos != devMap.end())
+			{
+				std::list<TThreshold> & pointList = pos->second;
+				int ret = CMMConfig::instance()->SetThresholdConf(pos->first, pointList);
+				if (ret < 0)
+				{
+					bOK = false;
+					if (ret == -2)
+						failedCause = "设置值不符合范围";
+					else
+						failedCause = "未查找到对应设备或id";
+				}
+				pos++;
+			}
+		}
+		if (bOK)
+		{
+			CMMConfig::instance()->UpdateCfgFile();
+		}
+		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_THRESHOLD_ACK, devMap);
+		response.SetResponseXml(rsp);
+		//if(devMap.size() !=0)
+		//	CMMAccess::instance()->NotifySendData(devMap);  //写监控数据后 上报操作设备的监控点数据
+		return 0;
+	}
+
+	int MsgProcess::OnGetFtpInfo( CMMMsg& request, CMMMsg &response )
+	{
+		CData rsp = CMMProtocolEncode::BuildGetFtpInfoRsp();
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+
+	int MsgProcess::OnSetFtpInfo( CMMMsg& request, CMMMsg& response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		CData user = info.GetSubElement("UserName").GetElementText().convertString();
+		CData password = info.GetSubElement("PassWord").GetElementText().convertString();
+	
+		CMMParam::instance()->AddLinuxSysUser(user,password, "/");
+		int ret= CMMParam::instance()->ModifyLinuxSysPasswd(user, password);
+		CData rsp ;
+		if(ret==0)
+		{
+			//FSUUTIL::SetFtpUser(user, password);
+			CMMParam::instance()->UpdateParam(CMM::param::FtpUsr, user);
+			CMMParam::instance()->UpdateParam(CMM::param::FtpPasswd, password);
+			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_FTP_ACK);
+		}
+		else
+		{
+			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, "NULL", CMM::method::SET_FTP_ACK);
+		}
+  	
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+
+	int MsgProcess::OnGetLoginInfo( CMMMsg& request, CMMMsg& response )
+	{
+		CData rsp = CMMProtocolEncode::BuildGetLoginInfoRsp();
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+
+	int MsgProcess::OnSetLoginInfo( CMMMsg& request, CMMMsg& response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		CData user = info.GetSubElement("UserName").GetElementText().convertString();
+		CData password = info.GetSubElement("PassWord").GetElementText().convertString();
+		CData rsp;
+		if(password.length() == 0)
+		{
+			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, "error", CMM::method::SET_LOGININFO_ACK);
+		}
+		else
+		{
+			CMMParam::instance()->UpdateParam(CMM::param::UserName, user);
+			CMMParam::instance()->UpdateParam(CMM::param::Password, password);
+			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_LOGININFO_ACK);
+		}
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+
+	int MsgProcess::OnGetStorageRule( CMMMsg& request, CMMMsg & response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		ISFIT::CXmlElement deviceList = info.GetSubElement("DeviceList");
+		std::map<CData, std::list<TSignal> > reqDevMap;
+		CProtocolDecode::DecodeGetStorageRuleList(deviceList, reqDevMap);
+		
+		std::map<CData, std::list<TSignal> > rspDevMap;
+		CMMConfig::instance()->GetStorageRuleConf(rspDevMap);
+		
+		bool bOK=true;
+		CData rsp;
+		int nResult = CMM::SUCCESS;
+		if (0 == reqDevMap.size())
+		{
+			if (rspDevMap.size() == 0)
+			{
+				nResult = CMM::NODATA;
+			}
+			for (auto iter = rspDevMap.begin(); iter != rspDevMap.end(); ++iter)
+			{
+				std::list<TSignal>& list = iter->second;
+				for (auto it = list.begin(); it != list.end(); ++it)
+				{
+					it->result = 1;
+				}
+			}
+			 rsp = CMMProtocolEncode::BuildGetStorageRuleRsp(nResult, rspDevMap);
+		}
+		else
+		{
+			if (rspDevMap.size() == 0)
+			{
+				nResult = CMM::NODATA;
+			}
+			else
+			{
+				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				{
+					CData deviceId = iter->first;
+					std::list<TSignal>& recvConfig = iter->second;
+					auto key = rspDevMap.find(deviceId);
+					if (key == rspDevMap.end())
+					{
+						continue;
+					}
+					std::list<TSignal>& config = key->second;
+					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
+					{
+						for (auto its = config.begin(); its != config.end(); ++its)
+						{
+							if (it->ID == its->ID)
+							{
+								it = its;
+								it->result = 1;
+							}
+						}
+					}
+				}
+			}
+			rsp = CMMProtocolEncode::BuildGetStorageRuleRsp(nResult, reqDevMap);
+		}
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+	
+	int MsgProcess::OnSetStorageRule( CMMMsg& request, CMMMsg& response )
+	{
+	
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		ISFIT::CXmlElement value = info.GetSubElement("Value");
+		ISFIT::CXmlElement deviceList = value.GetSubElement("DeviceList");
+		std::map<CData, std::list<TSignal> > devMap;
+		CProtocolDecode::DecodeSetStorageRule(deviceList, devMap);
+		bool bOK = true;
+		CData failedCause="NULL";
+		if(devMap.size() == 0)
+		{
+			failedCause="请求体未识别到设备id";
+			bOK = false;
+		}
+		else
+		{
+			auto pos = devMap.begin();
+			while (pos != devMap.end())
+			{
+				std::list<TSignal> & pointList = pos->second;
+				int ret = CMMConfig::instance()->SetStorageRuleConf(pos->first, pointList);
+				if (ret < 0)
+				{
+					bOK = false;
+					if (ret == -2)
+						failedCause = "设置值不符合范围";
+					else
+						failedCause = "未查找到对应设备或id";
+				}
+				pos++;
+			}
+		}
+		if (bOK)
+		{
+			CMMConfig::instance()->UpdateCfgFile();
+		}
+		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_STORAGERULE_ACK, devMap);
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+
+	int MsgProcess::OnGetFSUInfo( CMMMsg& request, CMMMsg & response )
+	{
+		CData rsp = CMMProtocolEncode::GetFsuInfo();
+		response.SetResponseXml(rsp);
+		CMMAccess::instance()->OnHeartBeat();
+		return 0;
+	}
+
+	int MsgProcess::OnUpdateFsuInterval( CMMMsg& request, CMMMsg& response )
+	{
+		ISFIT::CXmlElement info = request.GetInfoNode();
+		CData interval = info.GetSubElement("Interval").GetElementText().convertString();	
+		CMMParam::instance()->UpdateParam (CData(CMM::param::UpdateInterval),interval);
+		//CMMParam::instance()->writeJson2File();
+		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS,"NULL", CMM::method::UPDATE_FSUINFO_INTERVAL_ACK);
+		response.SetResponseXml(rsp);
+		return 0;
+	}
+	
 	int MsgProcess::OnTimeCheck( CMMMsg& request, CMMMsg & response )
 	{
 		ISFIT::CXmlElement info = request.GetInfoNode();
@@ -541,630 +771,7 @@ namespace CMM
 		APPAPI::RebootSys();
 		return 0;
 	}
-
-	int MsgProcess::OnSetPoint( CMMMsg& request, CMMMsg & response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		ISFIT::CXmlElement value = info.GetSubElement("Value");
-		ISFIT::CXmlElement deviceList = value.GetSubElement("DeviceList");
-		std::map<CData, std::list<TSemaphore> > devMap;
-		CProtocolDecode::DecodeSetPoint(deviceList, devMap);
-		std::map<CData, std::list<TSemaphore> >::iterator pos = devMap.begin();
-		//bool bFault = false;
-		bool bOK=true;
-		CData failedCause="NULL";
-		if(pos == devMap.end())
-		{
-			failedCause="请求体未识别到设备id";
-		}
-		while(pos != devMap.end())
-		{
-			CData deviceId = pos->first;
-			std::list<TSemaphore>::iterator semPos = pos->second.begin();
-			while(semPos != pos->second.end())
-			{
-				int ret = CMMConfig::instance()->SetSemaphoreConf(deviceId, *semPos);
-				if (ret<0)
-				{
-					bOK=false;
-					if (ret == -2)
-						failedCause="设置值不符合范围";
-					else
-						failedCause="未查找到对应设备或id";
-					semPos->result=0;
-				}
-				else{
-					semPos->result=1;
-				}
-				semPos++;
-			}
-			pos++;
-		}
-		if (bOK)
-		{
-			CMMConfig::instance()->UpdateCfgFile();
-		}
-		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_POINT_ACK, devMap);
-		response.SetResponseXml(rsp);
-		//if(devMap.size() !=0)
-		//	CMMAccess::instance()->NotifySendData(devMap);  //写监控数据后 上报操作设备的监控点数据
-		return 0;
-	}
-
-	bool MsgProcess::ThresholdIdFilter(std::map<CData,CData>& attr)
-	{
-		CData meterId = attr["meterId"];
-		if (meterId.length()<9)
-		{
-			return false;
-		}
-		CData meterType = attr["meterType"];
-		CData subId = meterId.substr(0, 3);
-		//LogInfo("----subId:"<<subId<<" meterType:"<<meterType);
-		if (meterType == "DI")
-			return true;
-		return false;
-	}
-
-	int MsgProcess::OnGetThreshold( CMMMsg& request, CMMMsg & response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		ISFIT::CXmlElement deviceList = info.GetSubElement("DeviceList");
-
-		std::map<CData, std::list<TThreshold> > rspDevMap;
-		
-		std::map<CData, std::list<TThreshold> > reqDevMap;
-		CProtocolDecode::DecodeGetDeviceList(deviceList, reqDevMap);	
-		bool bOK=true;
-		//LogInfo("reqDevMap size :"<< reqDevMap.size());
-		if (0 == reqDevMap.size())
-		{
-		
-			std::list <CData> devIdList;
-			APPAPI::GetDevId("alias", devIdList);
-			for (auto it=devIdList.begin(); it!=devIdList.end(); it++)
-			{
-				CData aliasDevId = *it;
-				LogInfo("--------AliasDevid:"<<aliasDevId);
-
-				std::set<CData> attrSet;
-				attrSet.insert("meterId");
-				//attrSet.insert("absoluteVal");
-				//attrSet.insert("relativeVal");
-				attrSet.insert("threshold");
-				attrSet.insert("alarmLevel");
-				attrSet.insert("meterType");
-				
-				std::list<std::map<CData,CData> > paramList;
-				APPAPI::GetMeterInfo(aliasDevId, "alias",attrSet, paramList,5000);
-
-				std::list<TThreshold> rspMeterList;
-				for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
-				{
-					std::map<CData,CData>& attr = *mit;
-					CData meterId = attr["meterId"];
-					//LogInfo("----meterId:"<<meterId);
-					if (ThresholdIdFilter(attr))
-					{	
-						//LogInfo("----found fit meterId:"<<meterId);
-						TThreshold rspMeter;
-						int len=meterId.length();
-						rspMeter.ID =meterId.substr(0,len-3);
-						rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();	
-						rspMeter.NMAlarmID = CMMConfig::instance()->NMAlarmID(rspMeter.ID);
-
-						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-						//int alarmLevel = attr["alarmLevel"].convertInt();
-						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-						if (nType < 5)
-						{
-							type = nType;
-						}
-						else if (nType == 5)
-						{
-							type = CMM::ALARM;
-						}
-						CMMConfig::instance()->SetMeteThreshold(attr, rspMeter, type);
-						
-						rspMeterList.push_back(rspMeter);
-					}
-				}
-				
-				if (rspMeterList.size()>0)
-				{
-					rspDevMap[aliasDevId] = rspMeterList;
-				}
-			}
-		}
-		else
-		{
-			for (auto it=reqDevMap.begin(); it!=reqDevMap.end(); it++)
-			{
-				std::list<TThreshold> rspMeterList;
-				CData devId = it->first;
-				std::list<TThreshold>& reqMeterIdList = it->second;				
-				if (reqMeterIdList.size() > 0)
-				{
-					//获取
-					TDevConf cfg = {  };
-					if (CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
-					{
-						LogError("get dev config failed id:" << devId);
-						//return -1;
-						bOK = false;
-						continue;
-					}
-					for (auto mit=reqMeterIdList.begin(); mit!=reqMeterIdList.end(); mit++)
-					{
-						TThreshold& reqMeterId = *mit;
-						//std::list<TSignal>::iterator pos = cfg.singals.begin();
-						int signalNum = 1;
-						char tmp[32]={0};
-						sprintf(tmp,"%03d",signalNum);
-						CData strSignalNumber=CData(tmp);
-						
-						CData meterId = reqMeterId.ID+strSignalNumber;
-						//LogInfo("~~~~~~~devid: " <<devId<<"id:"<<reqMeterId.ID<<"signalNum "<<strSignalNumber<<"meterID: "<<meterId);
-						std::map<CData,CData> attr;
-						APPAPI::GetMeterParam(devId, meterId, "alias", attr);
-						if (ThresholdIdFilter(attr))
-						{
-							TThreshold rspMeter;
-							rspMeter.ID = reqMeterId.ID;
-							rspMeter.SignalNumber = signalNum;
-							rspMeter.NMAlarmID= CMMConfig::instance()->NMAlarmID(rspMeter.ID);;
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
-							{
-								type = nType;
-							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteThreshold(attr, rspMeter, type);
-							rspMeterList.push_back(rspMeter);
-						}
-						else
-						{
-							LogError("get Threshold failed meterId:" << meterId.c_str());
-							bOK=false;
-						}
-					}
-				}
-				else
-				{
-					LogInfo("GetDev:" << devId);
-					std::set<CData> attrSet;
-					attrSet.insert("meterId");
-					//attrSet.insert("absoluteVal");
-					//attrSet.insert("relativeVal");
-					attrSet.insert("threshold");
-					attrSet.insert("alarmLevel");
-					attrSet.insert("meterType");
-					std::list<std::map<CData,CData> > paramList;
-					APPAPI::GetMeterInfo(devId, "alias", attrSet, paramList,5000);
-				
-					for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
-					{
-						std::map<CData,CData>& attr = *mit;
-						CData meterId=attr["meterId"];
-						
-						if (ThresholdIdFilter(attr))
-						{							
-							TThreshold rspMeter;
-
-							int len=meterId.length();
-							rspMeter.ID =meterId.substr(0,len-3);
-							rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();						
-							rspMeter.NMAlarmID = CMMConfig::instance()->NMAlarmID(rspMeter.ID);
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
-							{
-								type = nType;
-							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteThreshold(attr, rspMeter, type);
-							rspMeterList.push_back(rspMeter);
-						}
-					}
-				}
-				if (rspMeterList.size()>0)
-				{
-					rspDevMap[devId] = rspMeterList;
-				}
-			}
-		}
-		
-		CData rsp = CMMProtocolEncode::BuildGetThresholdRsp(bOK?CMM::SUCCESS:CMM::FAILURE, rspDevMap);
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-	
-
-	int MsgProcess::OnSetThreshold( CMMMsg& request, CMMMsg & response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		std::map<CData, std::list<TThreshold> > devMap;
-		CProtocolDecode::DecodeSetThreshold(info, devMap);
-		std::map<CData, std::list<TThreshold> >::iterator pos = devMap.begin();
-		//bool bFault = false;
-		bool bOK=false;
-		CData failedCause="NULL";
-		if(pos == devMap.end())
-		{
-			failedCause="请求体未识别到设备id";
-		}
-
-		while(pos != devMap.end())
-		{
-		/*	if(bFault)
-			{
-				break;
-			}*/
-			std::list<TThreshold>::iterator subPos = pos->second.begin();
-			while(subPos != pos->second.end())
-			{
-				LogInfo("DecodeSetThreshold devID : "<< pos->first.c_str());
-				if (subPos->Type != CMM::DI)
-				{
-					bOK = false;
-					failedCause = "该类型量无法设置门限值";
-					subPos->result = 0;
-					subPos++;
-					LogInfo("DecodeSetThreshold 该类型量无法设置门限值 : " << subPos->Type);
-					continue;
-				}
-				if(CMMConfig::instance()->SetThresholdConf(pos->first, *subPos) < 0)
-				{
-					//bFault = true;
-					//break;
-					bOK=false;
-					failedCause="未查找到对应设备或id";
-					subPos->result=0;
-				}
-				else{
-					bOK=true;
-					subPos->result=1;
-				}
-				subPos++;
-			}
-			pos++;
-		}
-		
-		if(bOK)
-		{
-			CMMConfig::instance()->UpdateCfgFile();
-		}
-
-		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_THRESHOLD_ACK, devMap);
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	int MsgProcess::OnGetFtpInfo( CMMMsg& request, CMMMsg &response )
-	{
-		CData rsp = CMMProtocolEncode::BuildGetFtpInfoRsp();
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	int MsgProcess::OnSetFtpInfo( CMMMsg& request, CMMMsg& response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		CData user = info.GetSubElement("UserName").GetElementText().convertString();
-		CData password = info.GetSubElement("PassWord").GetElementText().convertString();
-	
-		CMMParam::instance()->AddLinuxSysUser(user,password, "/");
-		int ret= CMMParam::instance()->ModifyLinuxSysPasswd(user, password);
-		CData rsp ;
-		if(ret==0)
-		{
-			//FSUUTIL::SetFtpUser(user, password);
-			CMMParam::instance()->UpdateParam(CMM::param::FtpUsr, user);
-			CMMParam::instance()->UpdateParam(CMM::param::FtpPasswd, password);
-			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_FTP_ACK);
-		}
-		else
-		{
-			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, "NULL", CMM::method::SET_FTP_ACK);
-		}
-  	
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	int MsgProcess::OnSetLoginInfo( CMMMsg& request, CMMMsg& response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		CData user = info.GetSubElement("UserName").GetElementText().convertString();
-		CData password = info.GetSubElement("PassWord").GetElementText().convertString();
-		CData rsp;
-		if(password.length() == 0)
-		{
-			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::FAILURE, "error", CMM::method::SET_LOGININFO_ACK);
-		}
-		else
-		{
-			CMMParam::instance()->UpdateParam(CMM::param::UserName, user);
-			CMMParam::instance()->UpdateParam(CMM::param::Password, password);
-			rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS, "NULL", CMM::method::SET_LOGININFO_ACK);
-		}
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	int MsgProcess::OnGetLoginInfo( CMMMsg& request, CMMMsg& response )
-	{
-		CData rsp = CMMProtocolEncode::BuildGetLoginInfoRsp();
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	int MsgProcess::OnUpdateFsuInterval( CMMMsg& request, CMMMsg& response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		CData interval = info.GetSubElement("Interval").GetElementText().convertString();	
-		CMMParam::instance()->UpdateParam (CData(CMM::param::UpdateInterval),interval);
-		//CMMParam::instance()->writeJson2File();
-		CData rsp = CMMProtocolEncode::BuildSetLoginRsp(CMM::SUCCESS,"NULL", CMM::method::UPDATE_FSUINFO_INTERVAL_ACK);
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-
-	//canyon add
-	int MsgProcess::OnGetStorageRule( CMMMsg& request, CMMMsg & response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		ISFIT::CXmlElement deviceList = info.GetSubElement("DeviceList");
-
-
-		std::map<CData, std::list<TSignal> > rspDevMap;
-		
-		std::map<CData, std::list<TSignal> > reqDevMap;
-		CProtocolDecode::DecodeGetStorageRuleList(deviceList, reqDevMap);
-		bool bOK=true;
-		LogInfo("reqDevMap size :" << reqDevMap.size());
-		if (0 == reqDevMap.size())
-		{
-			std::list <CData> devIdList;
-			APPAPI::GetDevId("alias", devIdList);
-			for (auto it=devIdList.begin(); it!=devIdList.end(); it++)
-			{
-				CData aliasDevId = *it;
-				std::list<TSignal> rspMeterList;
-
-				std::set<CData> attrSet;
-				attrSet.insert("meterId");
-				attrSet.insert("absoluteVal");
-				attrSet.insert("relativeVal");
-				attrSet.insert("storePeriod");
-				attrSet.insert("meterType");
-				
-				std::list<std::map<CData,CData> > paramList;
-				APPAPI::GetMeterInfo(aliasDevId, "alias",attrSet, paramList,5000);
-				for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
-				{
-					std::map<CData,CData>& attr = *mit;
-					CData meterId=attr["meterId"];		
-					int len=meterId.length();
-					CData id=meterId.substr(0,3);
-					int iID=id.convertInt();
-					if(len>3&&Is_rangeData(iID))
-					{	
-						TSignal rspMeter;
-						int len=meterId.length();
-						rspMeter.ID =meterId.substr(0,len-3);
-						rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();
-						int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-						//int alarmLevel = attr["alarmLevel"].convertInt();
-						int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-						if (nType < 5)
-						{
-							type = nType;
-						}
-						else if (nType == 5)
-						{
-							type = CMM::ALARM;
-						}
-						CMMConfig::instance()->SetMeteStorageRule(attr, rspMeter, type);
-						rspMeterList.push_back(rspMeter);
-					}
-				}
-				if (rspMeterList.size()>0)
-				{
-					rspDevMap[aliasDevId] = rspMeterList;
-				}
-			}
-		}
-		else
-		{
-			for (auto it=reqDevMap.begin(); it!=reqDevMap.end(); it++)
-			{
-				std::list<TSignal> rspMeterList;
-				
-				CData devId = it->first;
-				std::list<TSignal>& reqMeterIdList = it->second;
-				LogInfo("reqMeterIdList size :" << reqMeterIdList.size());
-				if (reqMeterIdList.size() > 0)
-				{
-					TDevConf cfg = {  };
-					if (CMMConfig::instance()->GetDevConf(devId, cfg) < 0)
-					{
-						LogError("get dev config failed id:"<<devId);
-						//return -1;
-						bOK=false;
-						continue;
-					}
-					
-					for (auto mit=reqMeterIdList.begin(); mit!=reqMeterIdList.end(); mit++)
-					{
-						TSignal& reqMeterId = *mit;
-						//CData NMAlarmID;
-						int signalNum = 1;
-						//std::list<TSignal>::iterator pos = cfg.singals.begin();
-						/*while (pos != cfg.singals.end())
-						{
-							if (pos->ID.compare(reqMeterId.ID) == 0)
-							{
-								NMAlarmID = pos->NMAlarmID;
-								signalNum = pos->SignalNumber;
-								break;
-							}
-							pos++;
-						}
-
-						if (NMAlarmID.empty() || NMAlarmID.length() == 0)
-							continue;*/
-
-						char tmp[32]={0};
-						sprintf(tmp,"%03d",signalNum);
-						CData strSignalNumber=CData(tmp);
-						
-						CData meterId = reqMeterId.ID+strSignalNumber;
-						//LogInfo("~~~~~~~~~~~~~~devid: " <<devId<<"id:"<<reqMeterId.ID<<"signalNum "<<strSignalNumber<<"meterID: "<<meterId);
-
-						std::map<CData,CData> attr;
-						APPAPI::GetMeterParam(devId, meterId, "alias", attr);
-						if(attr["meterId"]!="")
-						{
-							TSignal rspMeter;
-							rspMeter.ID = reqMeterId.ID;
-							rspMeter.SignalNumber = signalNum;
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
-							{
-								type = nType;
-							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteStorageRule(attr, rspMeter, type);
-							rspMeterList.push_back(rspMeter);
-						}
-						else
-						{
-							bOK=false;
-						}
-					}
-				}
-				else
-				{
-					LogInfo("GetDev:" << devId);
-					std::set<CData> attrSet;
-					attrSet.insert("meterId");
-					attrSet.insert("absoluteVal");
-					attrSet.insert("relativeVal");
-					attrSet.insert("storePeriod");
-					attrSet.insert("meterType");
-					
-					std::list<std::map<CData,CData> > paramList;
-					APPAPI::GetMeterInfo(devId, "alias",attrSet, paramList,5000);
-					for (auto mit=paramList.begin(); mit!=paramList.end(); mit++)
-					{
-						std::map<CData,CData>& attr = *mit;
-						CData meterId=attr["meterId"];
-						int len=meterId.length();
-						CData id=meterId.substr(0,3);
-						int iID=id.convertInt();
-						if(len>3&&Is_rangeData(iID))
-						{	
-							TSignal rspMeter;
-							int len=meterId.length();
-							rspMeter.ID =meterId.substr(0,len-3);
-							rspMeter.SignalNumber = meterId.substr(len-3,3).convertInt();		
-							int type = CMMMeteTranslate::ConvertToCmmMeterType(attr["meterType"]);
-							//int alarmLevel = attr["alarmLevel"].convertInt();
-							int nType = meterId.substr(3, 1).convertInt();  //第四位判断类型
-							if (nType < 5)
-							{
-								type = nType;
-							}
-							else if (nType == 5)
-							{
-								type = CMM::ALARM;
-							}
-							CMMConfig::instance()->SetMeteStorageRule(attr, rspMeter, type);
-							rspMeterList.push_back(rspMeter);
-						}
-					}
-				}
-				
-				if (rspMeterList.size()>0)
-				{
-					rspDevMap[devId] = rspMeterList;
-				}
-			}
-		}
-		
-		CData rsp = CMMProtocolEncode::BuildGetStorageRuleRsp(bOK?CMM::SUCCESS:CMM::FAILURE, rspDevMap);
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-	
-
-	int MsgProcess::OnSetStorageRule( CMMMsg& request, CMMMsg& response )
-	{
-		ISFIT::CXmlElement info = request.GetInfoNode();
-		std::map<CData, std::list<TSignal> > devMap;
-		CProtocolDecode::DecodeSetStorageRule(info, devMap);
-		std::map<CData, std::list<TSignal> >::iterator pos = devMap.begin();
-		//bool bFault = false;
-		bool bOK=false;
-		CData failedCause="NULL";
-		if(pos == devMap.end())
-		{
-			failedCause="请求体未识别到设备id";
-		}
-		
-		while(pos != devMap.end())
-		{
-		/*	if(bFault)
-			{
-				break;
-			}*/
-			std::list<TSignal>::iterator subPos = pos->second.begin();
-			while(subPos != pos->second.end())
-			{
-				if(CMMConfig::instance()->SetStorageRuleConf(pos->first, *subPos) < 0)
-				{
-					//bFault = true;
-					//break;
-					bOK=false;
-					failedCause="未查找到对应设备或id";
-					subPos->result=0;
-				}
-				else
-				{
-					bOK=true;
-					subPos->result=1;
-				}
-				subPos++;
-			}
-			pos++;
-		}
-	//	CMMConfig::instance()->SaveFile();
-		if(bOK)
-		{
-			CMMConfig::instance()->UpdateCfgFile();
-		}
-		CData rsp = CMMProtocolEncode::BuildSetPointRsp(bOK?CMM::SUCCESS:CMM::FAILURE,failedCause,CMM::method::SET_STORAGERULE_ACK, devMap);
-		response.SetResponseXml(rsp);
-		return 0;
-	}
-	//add end
-
-	//NEW
+ 
 	int MsgProcess::OnGetTime(CMMMsg& request, CMMMsg& response)
 	{
 		ISFIT::CXmlElement info = request.GetInfoNode();

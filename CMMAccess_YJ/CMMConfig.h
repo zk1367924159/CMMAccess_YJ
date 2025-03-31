@@ -14,21 +14,26 @@ namespace CMM{
 		void ReadCMMConfigData();
 		CData GetDictionaryName(CData id);
 		void CreateConfigFile();
+		bool ReadDeviceConfig();
 		CData NMAlarmID(CData signalId);
 		std::map<CData, TDevConf>& GetDevices();
 		bool OnUpdateCfgFileTimer();
 		void UpdateCfgFile();
 		void ReadDevCfgFromObj(std::list <CData>& devIdList);
 		int GetDevMetes(TDevConf& cfg);
-		int GetSemaphoreConf(CData devid, TSemaphore& cfg);
 		void SaveFile();
 		int GetDev(CData devId, TDevConf& cfg);
-		int SetDevCfg(std::map<CData, TDevConf>& devMap, std::list<CData>& scucessList, std::list<CData>& failList);
+
 		int GetDevConf(CData devid, TDevConf& cfg);
+		int SetDevCfg(std::map<CData, TDevConf>& devMap, std::list<CData>& scucessList, std::list<CData>& failList);
+
 		void GetSemaphoreConf(std::map<CData, std::list<TSemaphore>>& reqDevMap);
-		int SetSemaphoreConf(CData devid, TSemaphore& cfg);
-		int SetThresholdConf(CData devid, TThreshold& cfg);
-		int SetStorageRuleConf(CData devid, TSignal& cfg);
+		int SetSemaphoreConf(CData devid, std::list<TSemaphore>& cfg);
+		void GetThresholdConf(std::map<CData, std::list<TThreshold>>& reqDevMap);
+		int SetThresholdConf(CData devid, std::list<TThreshold>& cfg);
+		void GetStorageRuleConf(std::map<CData, std::list<TSignal>>& reqDevMap);
+		int SetStorageRuleConf(CData devid, std::list<TSignal>& cfg);
+
 		int SetMeteValues(std::map<CData, CData>& param, TSemaphore& semaphore, int nType);
 		int SetMeteStorageRule(std::map<CData, CData>& param, TSignal& Signal, int nType);
 		int SetMeteThreshold(std::map<CData, CData>& param, TThreshold& theshold, int nType);

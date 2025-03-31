@@ -215,6 +215,7 @@ typedef struct  	sTSignal
 		}
 	int Type;
 	CData ID;
+	CData meterId;
 	CData SignalName;
 	int AlarmLevel;
 	float Threshold;

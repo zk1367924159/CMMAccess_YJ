@@ -82,9 +82,12 @@ namespace CMM
 			while(subElement != NULL)
 			{
 				TSemaphore semaphore = { };
+				semaphore.Type = subElement.GetAttribute("Type").convertInt();
 				semaphore.ID = subElement.GetAttribute("ID");
-				semaphore.SetupVal = subElement.GetAttribute("SetupVal").convertDouble();
 				semaphore.SignalNumber = subElement.GetAttribute("SignalNumber").convertInt();
+				semaphore.SetupVal = subElement.GetAttribute("SetupVal").convertDouble();
+				semaphore.Status = subElement.GetAttribute("Status").convertInt();
+				semaphore.Time = subElement.GetAttribute("Time");
 				idList.push_back(semaphore);
 				subElement = device.GetSubElement("TSemaphore", subIndex++);
 			}

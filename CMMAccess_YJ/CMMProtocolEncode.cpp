@@ -109,6 +109,7 @@ namespace CMM{
 
 			TDevConf &dev = pos->second;
 			SET_XML_ATTRIBUTE(device, "DeviceID", dev.DeviceID.c_str());
+			//SET_XML_ATTRIBUTE(device, "DeviceOrderNo", dev.DeviceOrderNo.c_str());
 			SET_XML_ATTRIBUTE(device, "DeviceName", dev.DeviceName.c_str());
 			SET_XML_ATTRIBUTE(device, "SiteID",dev.SiteID.c_str());
 			SET_XML_ATTRIBUTE(device, "RoomID", dev.RoomID.c_str());
@@ -118,6 +119,7 @@ namespace CMM{
 			SET_XML_ATTRIBUTE(device, "DeviceSubType", dev.DeviceSubType.c_str());
 			SET_XML_ATTRIBUTE(device, "Model", dev.Model.c_str());
 			SET_XML_ATTRIBUTE(device, "Brand", dev.Brand.c_str());
+			//SET_XML_ATTRIBUTE(device, "ModuleNo", dev.ModuleNo.c_str());
 			SET_XML_ATTRIBUTE(device, "RatedCapacity", dev.RatedCapacity);
 			SET_XML_ATTRIBUTE(device, "Version", dev.Version.c_str());
 			SET_XML_ATTRIBUTE(device, "BeginRunTime", dev.BeginRunTime.c_str());
@@ -320,7 +322,7 @@ namespace CMM{
 	{
 		ISFIT::CXmlDoc doc;
 		doc.Parse(CMM_RESPONSE_XML_HEAD);
-		time_t nowTime = ISFIT::getLocalTime();;
+		time_t nowTime = ISFIT::getLocalTime();
 		try
 		{
 			ISFIT::CXmlElement root = doc.GetElement(CMM::Response);

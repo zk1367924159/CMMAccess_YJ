@@ -63,6 +63,27 @@ namespace CMM
 		return CMM::AI;
 	}
 
+	std::string CMMMeteTranslate::ConvertToMeterType(int meterType)
+	{
+		if (meterType == CMM::AI)
+		{
+			return "AI";
+		}
+		if (meterType == CMM::DI)
+		{
+			return "DI" ;
+		}
+		if (meterType == CMM::DO)
+		{
+			return "DO";
+		}
+		if (meterType == CMM::AO)
+		{
+			return "AO";
+		}
+		return  "AI";
+	}
+
 	int CMMMeteTranslate::FromInnerPortTypeToCMM(int type, int dataType)
 	{
 		if(type == SMART_DEV_METE_INFO::ALARM)
