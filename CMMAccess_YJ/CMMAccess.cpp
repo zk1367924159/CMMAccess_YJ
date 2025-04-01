@@ -1436,7 +1436,7 @@ namespace CMM{
 			auto iter = devList.begin();
 			for (; iter != devList.end(); ++iter)
 			{
-				LogInfo("main dev:" << iter->first << " size: "<< iter->second.size());
+				LogDebug("main dev:" << iter->first << " size: "<< iter->second.size());
 			}
 		}
 		return nRet;

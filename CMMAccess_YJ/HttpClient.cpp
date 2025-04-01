@@ -159,7 +159,7 @@ namespace CMM
 			if (response.getStatus() == HTTPResponse::HTTPStatus::HTTP_OK)
 			{
 				Poco::StreamCopier::copyToString(rs, res);
-				LogInfo("RECV++++++++++= :" << res);
+				LogDebug("RECV++++++++++= :" << res);
 				return 0;
 			}
 			else

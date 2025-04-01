@@ -329,7 +329,7 @@ namespace CMM
 		CProtocolDecode::DecodeGetDeviceList(deviceList, reqDevMap);
 		
 		std::map<CData, std::list<TSemaphore> > rspDevMap;
-		CMMConfig::instance()->GetSemaphoreConf(reqDevMap);
+		CMMConfig::instance()->GetSemaphoreConf(rspDevMap);
 		bool bOK=true;
 		CData rsp;
 		int nResult = CMM::SUCCESS;
@@ -357,27 +357,61 @@ namespace CMM
 			}
 			else
 			{
-				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				// 预处理阶段：建立双层映射（设备ID -> ID映射表）
+				std::unordered_map<std::string, std::unordered_map<std::string, TSemaphore>> deviceIdMap;
+				for (const auto& rspEntry : rspDevMap)
 				{
-					CData deviceId = iter->first;
-					std::list<TSemaphore>& recvConfig = iter->second;
-					auto key = rspDevMap.find(deviceId);
-					if (key == rspDevMap.end())
+					CData deviceId = rspEntry.first;
+					const std::list<TSemaphore>& semaphores = rspEntry.second;
+					// 为每个设备ID创建独立的ID映射
+					auto& idMap = deviceIdMap[deviceId.c_str()];
+					for (const auto& sem : semaphores)
 					{
+						idMap[sem.ID.c_str()] = sem;  // 同一设备ID下的ID保证唯一
+					}
+				}
+				// 处理阶段：遍历reqDevMap进行替换
+				for (auto& reqEntry : reqDevMap) {
+					CData deviceId = reqEntry.first;
+					std::list<TSemaphore>& reqSemaphores = reqEntry.second;
+
+					// 创建临时列表存储更新后的信号量
+					std::list<TSemaphore> updatedSemaphores;
+
+					// 检查是否存在对应的设备ID映射
+					auto devIt = deviceIdMap.find(deviceId.c_str());
+					if (devIt == deviceIdMap.end()) {
+						// 没有匹配的rsp设备ID，保留原始列表
 						continue;
 					}
-					std::list<TSemaphore>& config = key->second;
-					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
+					const auto& idMap = devIt->second;
+					if (reqSemaphores.size() == 0)
 					{
-						for (auto its = config.begin(); its != config.end(); ++its)
+						for (auto& semIt : idMap)
 						{
-							if (it->ID == its->ID)
-							{
-								it = its;
-								it->result = 1;
-							}
+							TSemaphore updatedSem = semIt.second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
 						}
 					}
+					for (auto& sem : reqSemaphores)
+					{
+						// 在对应的ID映射中查找
+						auto semIt = idMap.find(sem.ID.c_str());
+						if (semIt != idMap.end())
+						{
+							// 找到匹配项，用rsp中的对象替换
+							TSemaphore updatedSem = semIt->second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
+						}
+						else {
+							// 未找到匹配项，保留原始对象
+							updatedSemaphores.push_back(sem);
+						}
+					}
+					// 用更新后的列表替换原始列表
+					reqEntry.second = std::move(updatedSemaphores);
 				}
 			}
 			rsp = CMMProtocolEncode::BuildGetDataRsp(nResult, reqDevMap);
@@ -466,27 +500,64 @@ namespace CMM
 			}
 			else
 			{
-				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				// 预处理阶段：建立双层映射（设备ID -> ID映射表）
+				std::unordered_map<std::string, std::unordered_map<std::string, TThreshold>> deviceIdMap;
+
+				for (const auto& rspEntry : rspDevMap) 
 				{
-					CData deviceId = iter->first;
-					std::list<TThreshold>& recvConfig = iter->second;
-					auto key = rspDevMap.find(deviceId);
-					if (key == rspDevMap.end())
+					CData deviceId = rspEntry.first;
+					const std::list<TThreshold>& semaphores = rspEntry.second;
+					// 为每个设备ID创建独立的ID映射
+					auto& idMap = deviceIdMap[deviceId.c_str()];
+					for (const auto& sem : semaphores) 
 					{
+						idMap[sem.ID.c_str()] = sem;  // 同一设备ID下的ID保证唯一
+					}
+				}
+
+				// 处理阶段：遍历reqDevMap进行替换
+				for (auto& reqEntry : reqDevMap) 
+				{
+					CData deviceId = reqEntry.first;
+					std::list<TThreshold>& reqSemaphores = reqEntry.second;
+
+					// 创建临时列表存储更新后的信号量
+					std::list<TThreshold> updatedSemaphores;
+
+					// 检查是否存在对应的设备ID映射
+					auto devIt = deviceIdMap.find(deviceId.c_str());
+					if (devIt == deviceIdMap.end()) {
+						// 没有匹配的rsp设备ID，保留原始列表
 						continue;
 					}
-					std::list<TThreshold>& config = key->second;
-					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
+					const auto& idMap = devIt->second;
+					if (reqSemaphores.size() == 0)
 					{
-						for (auto its = config.begin(); its != config.end(); ++its)
+						for (auto& semIt : idMap)
 						{
-							if (it->ID == its->ID)
-							{
-								it = its;
-								it->result = 1;
-							}
+							TThreshold updatedSem = semIt.second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
 						}
 					}
+					for (auto& sem : reqSemaphores) 
+					{
+						// 在对应的ID映射中查找
+						auto semIt = idMap.find(sem.ID.c_str());
+						if (semIt != idMap.end()) 
+						{
+							// 找到匹配项，用rsp中的对象替换
+							TThreshold updatedSem = semIt->second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
+						}
+						else {
+							// 未找到匹配项，保留原始对象
+							updatedSemaphores.push_back(sem);
+						}
+					}
+					// 用更新后的列表替换原始列表
+					reqEntry.second = std::move(updatedSemaphores);
 				}
 			}
 			rsp = CMMProtocolEncode::BuildGetThresholdRsp(nResult, reqDevMap);
@@ -634,27 +705,69 @@ namespace CMM
 			}
 			else
 			{
-				for (auto iter = reqDevMap.begin(); iter != reqDevMap.end(); ++iter)
+				// 预处理阶段：建立双层映射（设备ID -> ID映射表）
+				std::unordered_map<std::string, std::unordered_map<std::string, TSignal>> deviceIdMap;
+
+				for (const auto& rspEntry : rspDevMap)
 				{
-					CData deviceId = iter->first;
-					std::list<TSignal>& recvConfig = iter->second;
-					auto key = rspDevMap.find(deviceId);
-					if (key == rspDevMap.end())
+					CData deviceId = rspEntry.first;
+					const std::list<TSignal>& semaphores = rspEntry.second;
+					// 为每个设备ID创建独立的ID映射
+					auto& idMap = deviceIdMap[deviceId.c_str()];
+					for (const auto& sem : semaphores)
 					{
+						idMap[sem.ID.c_str()] = sem;  // 同一设备ID下的ID保证唯一
+					}
+					LogInfo(deviceId << " - " << idMap.size());
+				}
+			
+				// 处理阶段：遍历reqDevMap进行替换
+				for (auto& reqEntry : reqDevMap)
+				{
+					CData deviceId = reqEntry.first;
+					std::list<TSignal>& reqSemaphores = reqEntry.second;
+
+					// 创建临时列表存储更新后的信号量
+					std::list<TSignal> updatedSemaphores;
+
+					// 检查是否存在对应的设备ID映射
+					auto devIt = deviceIdMap.find(deviceId.c_str());
+					if (devIt == deviceIdMap.end())
+					{
+						// 没有匹配的rsp设备ID，保留原始列表
+						LogError("failed found deviceIdMap" << deviceId);
 						continue;
 					}
-					std::list<TSignal>& config = key->second;
-					for (auto it = recvConfig.begin(); it != recvConfig.end(); ++it)
+					
+					const auto& idMap = devIt->second;
+					if (reqSemaphores.size() == 0)
 					{
-						for (auto its = config.begin(); its != config.end(); ++its)
+						for (auto& semIt : idMap)
 						{
-							if (it->ID == its->ID)
-							{
-								it = its;
-								it->result = 1;
-							}
+							TSignal updatedSem = semIt.second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
 						}
 					}
+					for (auto& sem : reqSemaphores)
+					{
+						// 在对应的ID映射中查找
+						auto semIt = idMap.find(sem.ID.c_str());
+						if (semIt != idMap.end())
+						{
+							// 找到匹配项，用rsp中的对象替换
+							TSignal updatedSem = semIt->second;
+							updatedSem.result = 1;  // 保持原始设置result=1的逻辑
+							updatedSemaphores.push_back(updatedSem);
+						}
+						else 
+						{
+							// 未找到匹配项，保留原始对象
+							updatedSemaphores.push_back(sem);
+						}
+					}
+					// 用更新后的列表替换原始列表
+					reqEntry.second = std::move(updatedSemaphores);
 				}
 			}
 			rsp = CMMProtocolEncode::BuildGetStorageRuleRsp(nResult, reqDevMap);

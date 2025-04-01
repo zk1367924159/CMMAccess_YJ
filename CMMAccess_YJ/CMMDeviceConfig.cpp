@@ -479,7 +479,7 @@ namespace CMM{
 							subList.push_back(subDevId);
 						}
 					}
-					if (subList.size() > 0)
+					//if (subList.size() > 0)
 					{
 						devList[devId] = subList;
 					}	

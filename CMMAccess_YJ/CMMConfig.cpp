@@ -96,7 +96,7 @@ namespace CMM{
 			return -1;
 		}
 		m_pDeviceConfig->Init();
-		if (!ReadDeviceConfig())
+		//if (!ReadDeviceConfig())
 		{
 			CreateConfigFile();
 		}
@@ -338,13 +338,13 @@ namespace CMM{
 	void CMMConfig::ReadDevCfgFromObj(std::list <CData>& devIdList)
 	{
 		m_devCfg.clear();
-		std::map<std::string, std::list<std::string>> devList;
+		/*std::map<std::string, std::list<std::string>> devList;
 		CMMAccess::instance()->SendGetDeviceData(devList);
 		if (devList.size() == 0)
 		{
 			LogError("this is not have devdata.");
 			return;
-		}
+		}*/
 		try
 		{
 			std::map<CData, TDeviceInfo> pMap = m_pDeviceConfig->GetDevices();  //所有设备的配置信息
@@ -362,7 +362,7 @@ namespace CMM{
 				dev.DeviceName = deviceName;
 				dev.DeviceType = aliasDevId.substr(0, 2);
 				dev.DeviceSubType = aliasDevId.substr(2, 2);
-				LogInfo("devId: " << devId << " --------aliasDevId :" << aliasDevId << " deviceID:" << devId);
+				LogInfo("devId: " << devId << " --------aliasDevId :" << aliasDevId);
 				
 				auto pos = pMap.find(devId);
 				if (pos != pMap.end())
@@ -384,25 +384,29 @@ namespace CMM{
 				dev.RoomID = CMMParam::instance()->m_RoomID;
 				dev.RoomName = CMMParam::instance()->m_RoomName;
 
-				auto devIter = devList.find(devId.c_str());
-				if (devIter == devList.end())  //找不到对应关系
+				//auto devIter = devList.find(devId.c_str());
+				//if (devIter == devList.end())  //找不到对应关系
+				//{
+				//	LogError("this is not have subdev.");
+				//	continue;
+				//}
+				//std::list<std::string>& subList = devIter->second;  //父设备下挂子设备列表
+				//LogInfo("subList:"<< subList.size());
+				//if (subList.size() ==  0)
+				//{
+				//	subList.push_back(devId.c_str());
+				//}
+				//for (const auto& str : subList)
 				{
-					LogError("this is not have subdev.");
-					continue;
-				}
-				std::list<std::string>& subList = devIter->second;  //父设备下挂子设备列表
-				LogInfo("subList:"<< subList.size());
-				for (const auto& str : subList)
-				{
-					std::string subDeviceId = str;
-					auto iter = pMap.find(subDeviceId);
-					if (iter == pMap.end())
-					{
-						LogDebug("this subdevice msg is not found: "<< subDeviceId);
-						continue;
-					}
-					int devIndex = iter->second.DeviceOrderNo.convertInt();  //根据设备顺序号 获取设备索引
-					if (devIndex < 1) devIndex = 1;
+					//std::string subDeviceId = aliasDevId;
+					//auto iter = pMap.find(subDeviceId);
+					//if (iter == pMap.end())
+					//{
+					//	LogDebug("this subdevice msg is not found: "<< subDeviceId);
+					//	continue;
+					//}
+					//int devIndex = iter->second.DeviceOrderNo.convertInt();  //根据设备顺序号 获取设备索引
+					//if (devIndex < 1) devIndex = 1;
 					std::set<CData> attrSet;
 					attrSet.insert("meterId");
 					attrSet.insert("meterType");
@@ -410,8 +414,7 @@ namespace CMM{
 					attrSet.insert("threshold");
 					attrSet.insert("meterName");
 					std::list<std::map<CData, CData> > infoList;
-					APPAPI::GetMeterInfo(subDeviceId, "msj", attrSet, infoList, 3000);
-					LogInfo("devindex: "<< devIndex << "   subDeviceId:" << subDeviceId << " size:" << infoList.size());
+					APPAPI::GetMeterInfo(aliasDevId, "alias", attrSet, infoList, 3000);
 					for (auto mit = infoList.begin(); mit != infoList.end(); mit++)
 					{
 						std::map<CData, CData>& attr = *mit;
@@ -448,17 +451,18 @@ namespace CMM{
 							{
 								/*APPAPI::tMeterVal meterVal = { 0 };
 								APPAPI::GetMeterVal(aliasDevId, meterId,"alias", meterVal);*/
-								int meterIndex = (devIndex-1) * 50 + atoi(meterId.substr(len - 3, 3).c_str());
-								signal.ID = Poco::format("%s%s",meterId.substr(0,meterId.length()-3), formatAsTwoDigitsSimple(meterIndex));
+								//int meterIndex = (devIndex-1) * 50 + atoi(meterId.substr(len - 3, 3).c_str());
+								signal.ID = meterId;// Poco::format("%s%s", meterId.substr(0, meterId.length() - 3), formatAsTwoDigitsSimple(meterIndex));
 								signal.meterId = meterId;
 								signal.SignalNumber = atoi(meterId.substr(len - 3, 3).c_str());
 								signal.NMAlarmID = NMAlarmID(signal.ID.substr(signal.ID.length()-6, 6));
 								CData name = GetDictionaryName(meterId);
-								signal.SignalName = name + "#"+ CData(subDeviceId);
+								signal.SignalName = name; //+ "#"+ CData(subDeviceId);
 								dev.singals.push_back(signal);
 							}
 						}
 					}
+					LogInfo(aliasDevId<< " dev signal size: " << dev.singals.size());
 					m_devCfg[aliasDevId] = dev;
 				}
 			}
@@ -511,54 +515,47 @@ namespace CMM{
 
 			std::map<CData, CData> devParamMap;
 			APPAPI::GetDevParam(aliasDevId, "alias", devParamMap, 5000);
-			CData deviceId = devParamMap["devId"];
-			std::map<CData, CData> paramMap;
-			paramMap["aliasDevName"] = devConf.DeviceName;
-			paramMap["aliasDevId"] = aliasDevId;
-			paramMap["devId"] = deviceId;
-			APPAPI::SetDevParam(deviceId, "msj", paramMap, 5000);
-			LogInfo("deviceId:  " << deviceId);
+			devParamMap["aliasDevName"] = devConf.DeviceName;
+			APPAPI::SetDevParam(aliasDevId, "alias", devParamMap, 5000);
 			std::list<TSignal>& singals = devConf.singals;
 			for (auto mit = singals.begin(); mit != singals.end(); mit++)
 			{
 				TSignal& signal = *mit;
-
 				CData meterId = signal.meterId;
-				int serioNo = meterId.substr(meterId.length() - 3, 3).convertInt();
+				/*int serioNo = meterId.substr(meterId.length() - 3, 3).convertInt();
 				serioNo = serioNo % 50;
-				meterId = Poco::format("%s%s", meterId.substr(0, meterId.length() - 3), formatAsTwoDigitsSimple(serioNo));
-
-				CData signalName = signal.SignalName;
+				meterId = Poco::format("%s%s", meterId.substr(0, meterId.length() - 3), formatAsTwoDigitsSimple(serioNo));*/
+				/*CData signalName = signal.SignalName;
 				size_t hashPos = signalName.find("#");
 				if (hashPos == CDATA_NPOS)
 				{
 					continue;
 				}
-				CData subDeviceID = signalName.substr(hashPos+1);
+				CData subDeviceID = signalName.substr(hashPos+1);*/
 				std::map <CData, CData> meterParamMap;
 				meterParamMap["meterId"] = meterId;
 				meterParamMap["threshold"] = CData(signal.Threshold);
 				//LogInfo("threshold====:"<<CData(signal.Threshold));
 				meterParamMap["alarmLevel"] = CData(signal.AlarmLevel);
-				paramList[subDeviceID].push_back(meterParamMap);
+				paramList[aliasDevId].push_back(meterParamMap);
 			}
 		}
 		for(auto iter = paramList.begin() ; iter != paramList.end(); ++iter)
 		{
-			CData subDeviceId = iter->first;
+			CData aliasDevId = iter->first;
 			std::list<std::map<CData, CData>>& meterList = iter->second;
 			std::list<CData> errorMeterIdList;
-			int ret1 = APPAPI::SetMeterParam(subDeviceId, "msj", meterList, errorMeterIdList, 5000);
+			int ret1 = APPAPI::SetMeterParam(aliasDevId, "alias", meterList, errorMeterIdList, 5000);
 			if (errorMeterIdList.size() == 0)
 			{
 				bOK = true;
-				scucessList.push_back(subDeviceId);
-				LogInfo("SetDevCfg ok devId:" << subDeviceId.c_str() << " ret1:" << ret1);
+				scucessList.push_back(aliasDevId);
+				LogInfo("SetDevCfg ok devId:" << aliasDevId.c_str() << " ret1:" << ret1);
 			}
 			else
 			{
-				failList.push_back(subDeviceId);
-				LogError("=== SetDevCfg() SetMeterParam failed devid:" << subDeviceId.c_str() << " ret1:" << ret1);
+				failList.push_back(aliasDevId);
+				LogError("=== SetDevCfg() SetMeterParam failed devid:" << aliasDevId.c_str() << " ret1:" << ret1);
 			}
 		}
 
@@ -605,13 +602,13 @@ namespace CMM{
 		for (auto it = devIdList.begin(); it != devIdList.end(); it++)
 		{
 			std::list<TSemaphore> rspSemaphoreList;
-			const CData& devId = *it;
-			TDevConf cfg = {  };
-			if (GetDevConf(devId, cfg) < 0)
+			auto iter = m_devCfg.find(*it);
+			if (iter == m_devCfg.end())
 			{
-				LogError("get dev config failed id:" << devId);
+				LogError("this device is not found:" << (*it).c_str());
 				continue;
 			}
+			TDevConf& cfg = iter->second;
 			std::list<TSignal>::iterator pos = cfg.singals.begin();
 			while (pos != cfg.singals.end())
 			{
@@ -620,14 +617,18 @@ namespace CMM{
 				CData meterId = pos->meterId;
 				CData signalName = pos->SignalName;
 				size_t hashPos = signalName.find("#");
+				CData aliasDevId;
 				if (hashPos == CDATA_NPOS)
 				{
-					continue;
+					aliasDevId = *it;
 				}
-				CData subDeviceID = signalName.substr(hashPos+1);
+				else
+				{
+					aliasDevId = signalName.substr(hashPos+1);
+				}
 				std::map<CData, CData> attr;
-				APPAPI::GetMeterInfo(subDeviceID, meterId, "msj", attr);
-				if (attr["meterId"] != "")
+				APPAPI::GetMeterInfo(aliasDevId, meterId, "alias", attr);
+				if (attr.size() != 0)
 				{
 					TSemaphore rspSemaphore;
 					rspSemaphore.ID = ID;
@@ -638,7 +639,7 @@ namespace CMM{
 				}
 				pos++;
 			}
-			reqDevMap[devId] = rspSemaphoreList;
+			reqDevMap[*it] = rspSemaphoreList;
 		}
 		LogInfo("GetSemaphoreConf size: " << reqDevMap.size());
 	}
@@ -646,7 +647,7 @@ namespace CMM{
 	int CMMConfig::SetSemaphoreConf(CData devid, std::list<TSemaphore>& cfg)
 	{
 		TDevConf devCfg = { };
-		if (GetDevConf(devid, devCfg) < 0)
+		if (GetDev(devid, devCfg) < 0)
 		{
 			return -1;
 		}
@@ -666,18 +667,21 @@ namespace CMM{
 					size_t hashPos = signalName.find("#");
 					if (hashPos == CDATA_NPOS)
 					{
-						break;
+						subDevId = devid;
 					}
-					subDevId = signalName.substr(hashPos + 1);
+					else
+					{
+						subDevId = signalName.substr(hashPos + 1);
+					}
 					meterId = sigObj.meterId;
 					CData setupVal = CData(iter->SetupVal);
 					LogInfo("~~~~~~~devid: " <<subDevId.c_str() <<" meterId:"<<meterId.c_str() <<" setupVal "<<setupVal.c_str());
-					APPAPI::SetMeterVal(subDevId, meterId, "msj", setupVal);
+					APPAPI::SetMeterVal(subDevId, meterId, "alias", setupVal);
 
 					std::map<CData, CData> paramMap;
 					paramMap["val"] = setupVal;
 					paramMap["meterType"] =  CMMMeteTranslate::ConvertToMeterType(iter->Type);
-					APPAPI::SetMeterParam(subDevId, meterId, "msj", paramMap);
+					APPAPI::SetMeterParam(subDevId, meterId, "alias", paramMap);
 					flag = true;
 					break;
 				}
@@ -703,7 +707,7 @@ namespace CMM{
 			std::list<TThreshold> rspList;
 			const CData& devId = *it;
 			TDevConf cfg = {  };
-			if (GetDevConf(devId, cfg) < 0)
+			if (GetDev(devId, cfg) < 0)
 			{
 				LogError("get dev config failed id:" << devId);
 				continue;
@@ -716,14 +720,18 @@ namespace CMM{
 				CData meterId = pos->meterId;
 				CData signalName = pos->SignalName;
 				size_t hashPos = signalName.find("#");
+				CData subDeviceID;
 				if (hashPos == CDATA_NPOS)
 				{
-					continue;
+					subDeviceID = devId;
 				}
-				CData subDeviceID = signalName.substr(hashPos+1);
+				else
+				{
+					subDeviceID = signalName.substr(hashPos+1);
+				}
 				std::map<CData, CData> attr;
-				APPAPI::GetMeterInfo(subDeviceID, meterId, "msj", attr);
-				if (attr["meterId"] != "")
+				APPAPI::GetMeterInfo(subDeviceID, meterId, "alias", attr);
+				if (attr.size() != 0)
 				{
 					TThreshold rspSemaphore;
 					rspSemaphore.ID = ID;
@@ -741,7 +749,7 @@ namespace CMM{
 	int CMMConfig::SetThresholdConf(CData devid, std::list<TThreshold>& cfg)
 	{
 		TDevConf devCfg = { };
-		if (GetDevConf(devid, devCfg) < 0)
+		if (GetDev(devid, devCfg) < 0)
 		{
 			return -1;
 		}
@@ -765,14 +773,17 @@ namespace CMM{
 					size_t hashPos = signalName.find("#");
 					if (hashPos == CDATA_NPOS)
 					{
-						break;
+						subDevId = devid;
 					}
-					subDevId = signalName.substr(hashPos + 1);
+					else
+					{
+						subDevId = signalName.substr(hashPos + 1);
+					}
 					meterId = sigObj.meterId;
 					std::map<CData, CData> paramMap;
 					paramMap["threshold"] = CData(sigObj.Threshold);
 					paramMap["alarmLevel"] = CData(sigObj.AlarmLevel);
-					APPAPI::SetMeterParam(subDevId, meterId, "msj", paramMap);
+					APPAPI::SetMeterParam(subDevId, meterId, "alias", paramMap);
 					flag = true;
 					break;
 				}
@@ -798,7 +809,7 @@ namespace CMM{
 			std::list<TSignal> rspList;
 			const CData& devId = *it;
 			TDevConf cfg = {  };
-			if (GetDevConf(devId, cfg) < 0)
+			if (GetDev(devId, cfg) < 0)
 			{
 				LogError("get dev config failed id:" << devId);
 				continue;
@@ -811,14 +822,18 @@ namespace CMM{
 				CData meterId = pos->meterId;
 				CData signalName = pos->SignalName;
 				size_t hashPos = signalName.find("#");
+				CData subDeviceID;
 				if (hashPos == CDATA_NPOS)
 				{
-					continue;
+					subDeviceID = devId;
 				}
-				CData subDeviceID = signalName.substr(hashPos+1);
+				else
+				{
+					subDeviceID = signalName.substr(hashPos+1);
+				}
 				std::map<CData, CData> attr;
-				APPAPI::GetMeterInfo(subDeviceID, meterId, "msj", attr);
-				if (attr["meterId"] != "")
+				APPAPI::GetMeterInfo(subDeviceID, meterId, "alias", attr);
+				if (attr.size() != 0)
 				{
 					TSignal rspSemaphore;
 					rspSemaphore.ID = ID;
@@ -828,6 +843,7 @@ namespace CMM{
 				}
 				pos++;
 			}
+			LogInfo(devId << " rspList size: " << rspList.size());
 			reqDevMap[devId] = rspList;
 		}
 		LogInfo("GetSemaphoreConf size: " << reqDevMap.size());
@@ -842,8 +858,8 @@ namespace CMM{
 		}
 		std::list<TSignal>& sigList = devCfg.singals;
 		auto iter = cfg.begin();
-		CData subDevId;
 		CData meterId;
+		CData subDevId;
 		for (; iter != cfg.end(); ++iter)
 		{
 			bool flag = false;
@@ -856,15 +872,18 @@ namespace CMM{
 					size_t hashPos = signalName.find("#");
 					if (hashPos == CDATA_NPOS)
 					{
-						break;
+						subDevId = devid;
 					}
-					subDevId = signalName.substr(hashPos + 1);
+					else
+					{
+						subDevId = signalName.substr(hashPos + 1);
+					}
 					meterId = sigObj.meterId;
 					std::map<CData, CData> paramMap;
 					paramMap["absoluteVal"] = CData(sigObj.AbsoluteVal);
 					paramMap["relativeVal"] = CData(sigObj.RelativeVal);
 					paramMap["storePeriod"] = CData(sigObj.savePeriod);
-					APPAPI::SetMeterParam(subDevId, meterId, "msj", paramMap);
+					APPAPI::SetMeterParam(subDevId, meterId, "alias", paramMap);
 					flag = true;
 					break;
 				}

@@ -340,11 +340,18 @@ namespace CMM{
 					continue;
 				}
 				std::string val = value.get<std::string>();
-				
-				if (m_json[key].get<std::string>() != val)
+				try
 				{
-					LogInfo("key : " << key <<  "val: " << val);
-					UpdateParam(key.c_str(), val.c_str());
+					if (m_json[key].get<std::string>() != val)
+					{
+						LogInfo("key : " << key << "val: " << val);
+						UpdateParam(key.c_str(), val.c_str());
+					}
+				}
+				catch (const std::exception& e)
+				{
+					LogError("key: " << key << "exception: " << e.what());
+					continue;
 				}
 			}
 			//writeJson2File();
