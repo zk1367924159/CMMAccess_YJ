@@ -1072,7 +1072,7 @@ namespace CMM{
 		param.push_back(std::make_tuple(CData(CMM::param::SCDoorTransPort), CData("11215")));
 		param.push_back(std::make_tuple(CData(CMM::param::SCProtocol), CData("udp")));
 
-		param.push_back(std::make_tuple(CData(CMM::param::AuthEnable), CData("true")));
+		param.push_back(std::make_tuple(CData(CMM::param::AuthEnable), CData("false")));
 		param.push_back(std::make_tuple(CData(CMM::param::EnginState), CData("false")));
 		param.push_back(std::make_tuple(CData(CMM::param::UpdateEnable), CData("false")));
 		param.push_back(std::make_tuple(CData(CMM::param::SoapEnable), CData("false")));
@@ -1093,8 +1093,8 @@ namespace CMM{
 
 		param.push_back(std::make_tuple(CData(CMM::param::LoginPeriod), CData("30")));
 		param.push_back(std::make_tuple(CData(CMM::param::Algorithm), CData("sha256")));
-		param.push_back(std::make_tuple(CData(CMM::param::Password), CData("")));
-		param.push_back(std::make_tuple(CData(CMM::param::UserName), CData("")));
+		param.push_back(std::make_tuple(CData(CMM::param::Password), CData("admin")));
+		param.push_back(std::make_tuple(CData(CMM::param::UserName), CData("password")));
 		param.push_back(std::make_tuple(CData(CMM::param::SCEndPoint), CData("http://192.168.1.191:8080/v1/services/newLSCService")));
 
 
