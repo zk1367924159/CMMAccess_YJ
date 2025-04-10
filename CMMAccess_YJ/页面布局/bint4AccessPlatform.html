@@ -1,0 +1,262 @@
+<div id='tconfig'>
+  <div id='tablediv' style="width:70%; margin-left:15%">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"  style="color: darkorange;" >中移动B接口接入</h3>
+      </div>
+      <div class="panel-body">
+        <table style="width: 100%">
+          <tbody>
+            <tr>
+              <td class="ntd">SC Web服务URL:</td>
+              <td class="ntd"><input id="sc-webservice-url" type="text"/></td>
+              <td class="ntd">密码算法:</td>
+              <td class="ntd">
+                <select name="sc-login-algorithm" id="sc-login-algorithm">
+                  <option value="md5">md5</option>
+                  <option value="sha256" selected="1">sha256</option>
+                  <option value="sm3">sm3</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="ntd">SC Web服务登录用户:</td>
+              <td class="ntd"><input id="sc-login-user" type="text"/></td>
+              <td class="ntd">SC Web服务登录密码:</td>
+              <td class="ntd"><input id="sc-login-pass" type="text"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">SOAP:</td>
+              <td class="ntd">
+                <select name="enable-soap" id="enable-soap">
+                  <option value="false">不启用</option>
+                  <option value="true">启用</option>
+                </select>
+              </td>
+              <td class="ntd">身份验证:</td>
+              <td class="ntd">
+                <select name="enable-auth" id="enable-auth">
+                  <option value="false">不启用</option>
+                  <option value="true">启用</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="ntd">站点ID:</td>
+              <td class="ntd"><input id="site-id" type="text"/></td>
+              <td class="ntd">站点名称:</td>
+              <td class="ntd"><input id="site-name" type="text"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">机房ID:</td>
+              <td class="ntd"><input id="room-id" type="text"/></td>
+              <td class="ntd">机房名称:</td>
+              <td class="ntd"><input id="room-name" type="text"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">FSU ID:</td>
+              <td class="ntd"><input id="fsu-id" type="text"/></td>
+              <td class="ntd">FSU设备ID:</td>
+              <td class="ntd"><input id="fsu-device-id" type="text"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">FSU Web服务URL:</td>
+              <td class="ntd"><input id="fsu-webservice-url" type="text"/></td>
+              <td class="ntd">FTP类型:</td>
+              <td class="ntd">
+                <select name="ftp-type" id="ftp-type">
+                  <option value="ftp">ftp</option>
+                  <option value="sftp" selected="1">sftp</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="ntd">FTP用户:</td>
+              <td class="ntd"><input id="ftp-user" type="text"/></td>
+              <td class="ntd">FTP密码:</td>
+              <td class="ntd"><input id="ftp-pass" type="text"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">启用实时数据更新通知:</td>
+              <td class="ntd">
+                <select name="enable-realtime-update" id="enable-realtime-update">
+                  <option value="false">禁用</option>
+                  <option value="true">启用</option>
+                </select>
+              </td>
+              <td class="ntd">登录重试周期(秒):</td>
+              <td class="ntd"><input id="re-login-period" type="text" defval="30" pattern="^[1-9][0-9]*$"/><span id="re-login-period-error" style="color:red; text-align:left"></span></td>
+            <tr>
+              <td class="ntd">日志级别:</td>
+              <td class="ntd">
+                <select name="logger-level" id="logger-level">
+                  <option value="1">FATAL</option>
+                  <option value="2">CRITICAL</option>
+                  <option value="3">ERROR</option>
+                  <option value="4">WARNING</option>
+                  <option value="5">NOTICE</option>
+                  <option value="6">INFORMATION</option>
+                  <option value="7">DEBUG</option>
+                  <option value="8">TRACE</option>
+                </select>
+              </td>
+              <td class="ntd">日志文件大小(MB):</td>
+              <td class="ntd"><input id="logger-file-size" type="text" defval="10" pattern="^[1-9][0-9]*$"/><span id="logger-file-size-error" style="color:red; text-align:left"></span></td>
+            </tr>
+            <tr>
+              <td class="ntd">配置上报周期(分钟):</td>
+              <td class="ntd"><input id="send-conf-period" type="text" defval="30" pattern="^[1-9][0-9]*$"/><span id="send-conf-period" style="color:red; text-align:left"></span></td>
+              <td class="ntd">AI历史存储周期(分钟):</td>
+              <td class="ntd"><input id="csv-measurement-period" type="text" defval="5" pattern="^[1-9][0-9]*$"/><span id="csv-measurement-period-error" style="color:red; text-align:left"></span></td>
+            </tr>
+            <tr>
+              <td class="ntd">历史记录过期时间(天):</td>
+              <td class="ntd"><input id="csv-expire-period" type="text" defval="7" pattern="^[1-9][0-9]*$"/><span id="csv-expire-period-error" style="color:red; text-align:left"></span></td>
+              <td class="ntd"></td>
+              <td class="ntd"></td>
+            </tr>
+            <tr>
+              <td class="ntd">门禁平台服务器IP:</td>
+              <td class="ntd"><input id="door-server-ip" type="text"/></td>
+              <td class="ntd">门禁平台服务器端口:</td>
+              <td class="ntd"><input id="door-server-port" type="text" defval="11216" pattern="^[1-9][0-9]*$"/><span id="door-server-port-error" style="color:red; text-align:left"></td>
+            </tr>
+            <tr>
+              <td class="ntd">门禁透传协议</td>
+              <td class="ntd">
+                <select name="door-trans-protocol" id="door-trans-protocol">
+                  <option value="tcp">TCP</option>
+                  <option value="udp">UDP</option>
+                </select>
+              </td>
+              <td class="ntd">门禁透传端口:</td>
+              <td class="ntd"><input id="door-trans-port" type="text" defval="11215" pattern="^[1-9][0-9]*$"/><span id="door-trans-port-error" style="color:red; text-align:left"></td>
+            </tr>
+            <tr>
+              <td class="ntd">串口:</td>
+              <td class="ntd">
+                <select name="serial-port" id="serial-port">
+                  <option value="COM1">COM1</option>
+                  <option value="COM2">COM2</option>
+                  <option value="COM3">COM3</option>
+                  <option value="COM4">COM4</option>
+                  <option value="COM5">COM5</option>
+                  <option value="COM6">COM6</option>
+                  <option value="COM7">COM7</option>
+                  <option value="COM8">COM8</option>
+                </select>
+              </td>
+              <td class="ntd">串口地址:</td>
+              <td class="ntd"><input id="slave-id" type="text"/></td>
+              
+            </tr>
+            <tr>
+              <td class="ntd">波特率:</td>
+              <td class="ntd">
+                <select name="baud-rate" id="baud-rate">
+                  <option value="110">110</option>
+                  <option value="300">300</option>
+                  <option value="600">600</option>
+                  <option value="1200">1200</option>
+                  <option value="2400">2400</option>
+                  <option value="4800">4800</option>
+                  <option value="9600">9600</option>
+                  <option value="14400">14400</option>
+                  <option value="19200">19200</option>
+                  <option value="38400">38400</option>
+                  <option value="56000">56000</option>
+                  <option value="57600">57600</option>
+                  <option value="115200">115200</option>
+                  <option value="128000">128000</option>
+                  <option value="256000">256000</option>
+                </select>
+              </td>
+              <td class="ntd">数据位:</td>
+              <td class="ntd">
+                <select name="data-bits" id="data-bits">
+                  <option value="8">8</option>
+                  <option value="7">7</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="ntd">校验:</td>
+              <td class="ntd">
+                <select name="parity" id="parity">
+                  <option value="None">None</option>
+                  <option value="Even">Even</option>
+                  <option value="Odd">Odd</option>
+                  <option value="Mark">Mark</option>
+                  <option value="Space">Space</option>
+                </select>
+              </td>
+              <td class="ntd">停止位:</td>
+              <td class="ntd">
+                <select name="stop-bits" id="stop-bits">
+                  <option value="1">1</option>
+                  <option value="1.5">1.5</option>
+                  <option value="2">2</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="ntd">自动重启周期（天）:</td>
+              <td class="ntd"><input id="fsu-auto-reboot-period" type="text" defval="7" pattern="^[1-9][0-9]*$"/><span id="fsu-auto-reboot-period-error" style="color:red; text-align:left"></span></td>
+              <td class="ntd">重启时间（HH:MM:SS，24小时制）:</td>
+              <td class="ntd"><input id="fsu-auto-reboot-time" type="text" defval="00:00:00" pattern="^[0-9]{2}:[0-9]{2}:[0-9]{2}$"/><span id="fsu-auto-reboot-time-error" style="color:red; text-align:left"></span></td>
+            </tr>
+            <tr>
+              <td class="ntd">启用自动重启:</td>
+              <td class="ntd">
+                <select name="fsu-auto-reboot-enable" id="fsu-auto-reboot-enable">
+                  <option value="false">不启用</option>
+                  <option value="true">启用</option>
+                </select>
+              </td>
+              <td class="ntd">启用工程状态（禁止上报告警）:</td>
+              <td class="ntd">
+                <select name="enable-enginnering-state" id="enable-enginnering-state">
+                  <option value="false">不启用</option>
+                  <option value="true">启用</option>
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h2>Web API参数配置</h2>
+        <table style="width: 100%">
+          <tbody>
+            <tr>
+              <td class="ntd">Web API版本:</td>
+              <td class="ntd"><input id="web-api-version" type="text" readonly="true"/></td>
+              <td class="ntd">FSU信息更新周期(秒):</td>
+              <td class="ntd"><input id="update-fsuinfo-interval" type="text" defval="120" pattern="^[1-9][0-9]*$"/><span id="update-fsuinfo-interval-error" style="color:red; text-align:left"></span></td>
+            </tr>
+            <tr>
+              <td class="ntd">Web API主机/IP:</td>
+              <td class="ntd"><input id="web-api-host" type="text" readonly="true"/></td>
+              <td class="ntd">Web API端口:</td>
+              <td class="ntd"><input id="web-api-port" type="text" readonly="true"/></td>
+            </tr>
+            <tr>
+              <td class="ntd">Web API设备厂家信息:</td>
+              <td class="ntd"><input id="web-api-device-config" type="text" readonly="true"/></td>
+              <td class="ntd"></td>
+              <td class="ntd"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div align="center">
+      <button id="save" class="btn btn-primary"> <i class="icon-save "></i> 保存</button>
+      <button id="load" class="btn btn-primary"> <i class="icon-refresh "></i> 刷新</button>
+      <button id="reboot" class="btn btn-primary"> <i class="icon-undo"></i> 重启FSU</button>
+      <button id="remove-all-alarm" class="btn btn-primary"> <i class="icon-remove"></i>删除所有未上报的告警</button>
+    </div>
+    <div id="status" class="panel" style="padding:1em"></div>
+    <div class="panel" style="padding:1em"><pre id="messages"></pre></div>
+    <script src="/js/bint4-config.js" type="text/javascript"></script>
+  </div>
+</div>
+
