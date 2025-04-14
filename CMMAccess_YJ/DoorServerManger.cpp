@@ -8,20 +8,95 @@ using namespace Poco::Net;
 namespace CMM
 {
 
+	//void TcpServer::run()
+	//{
+	//	std::vector<std::future<void>> futures;
+	//	while (_running.load())
+	//	{
+	//		StreamSocket socket = _socket->acceptConnection();
+	//		std::string clientIP = socket.peerAddress().host().toString();
+	//		LogInfo("Client connected from: " << clientIP);
+	//		// 处理客户端连接
+	//		futures.push_back(std::async(std::launch::async, [socket, clientIP]() mutable {
+	//			try
+	//			{
+	//				while (true)
+	//				{
+	//					std::vector<uint8_t> recvBuffer(1024); // 初始大小为1024
+	//					int recvBytes = socket.receiveBytes(recvBuffer.data(), recvBuffer.size());
+	//					// 检测客户端是否断开连接
+	//					if (recvBytes <= 0)
+	//					{
+	//						LogInfo("Client disconnected: " << clientIP);
+	//						break; // 退出循环，结束连接
+	//					}
+	//					// 处理接收到的数据
+	//					if (recvBytes == (int)recvBuffer.size())
+	//					{
+	//						LogNotice("Data from " << clientIP << " is too large. Resizing buffer.");
+	//						recvBuffer.resize(2 * recvBytes);
+	//						continue;
+	//					}
+	//					if (recvBuffer.size() >= MAX_RECV_DATASIZE)
+	//					{
+	//						LogError("Data from " << clientIP << " exceeds maximum size.");
+	//						continue;
+	//					}
+	//					std::vector<uint8_t> outBuffer;
+	//					outBuffer.reserve(recvBytes);
+	//					if (!TransData::UnPackageRecvData(recvBuffer, recvBytes, outBuffer))
+	//					{
+	//						std::string response = "UnPackageRecvData failed.";
+	//						LogError("UnPackageRecvData failed for client: " << clientIP);
+	//						socket.sendBytes(response.c_str(), response.length());
+	//						continue;
+	//					}
+	//					LogInfo("Received " << recvBytes << " bytes from " << clientIP << ". OutBuffer size: " << outBuffer.size());
+	//					if (!CMMAccess::instance()->writeDataToUart(outBuffer))
+	//					{
+	//						LogError("writeDataToUart failed for client: " << clientIP);
+	//						std::string response = "writeDataToUart failed.";
+	//						socket.sendBytes(response.c_str(), response.length());
+	//						continue;
+	//					}
+	//				}
+	//			}
+	//			catch (const std::exception& e)
+	//			{
+	//				LogError("Exception for client " << clientIP << ": " << e.what());
+	//			}
+	//			// 关闭连接
+	//			socket.close();
+	//			LogInfo("Connection closed for client: " << clientIP);
+	//			}));
+	//		// 清理已完成的任务
+	//		futures.erase(std::remove_if(futures.begin(), futures.end(), [](std::future<void>& future) {
+	//			return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+	//			}), futures.end());
+	//	}
+	//	// 等待所有任务完成
+	//	for (auto& future : futures)
+	//	{
+	//		future.wait();
+	//	}
+	//}
+
 	void TcpServer::run()
 	{
-		std::vector<std::future<void>> futures;
+		std::vector<std::thread> threads; // 用于存储活动线程
+		std::atomic<bool> stopThreads(false); // 用于通知线程停止
 
 		while (_running.load())
 		{
 			StreamSocket socket = _socket->acceptConnection();
 			std::string clientIP = socket.peerAddress().host().toString();
 			LogInfo("Client connected from: " << clientIP);
-			// 处理客户端连接
-			futures.push_back(std::async(std::launch::async, [socket, clientIP]() mutable {
+
+			// 启动新线程处理客户端连接
+			threads.emplace_back([socket, clientIP, &stopThreads]() mutable {
 				try
 				{
-					while (true)
+					while (!stopThreads) // 检查是否需要停止
 					{
 						std::vector<uint8_t> recvBuffer(1024); // 初始大小为1024
 						int recvBytes = socket.receiveBytes(recvBuffer.data(), recvBuffer.size());
@@ -32,6 +107,7 @@ namespace CMM
 							LogInfo("Client disconnected: " << clientIP);
 							break; // 退出循环，结束连接
 						}
+
 						// 处理接收到的数据
 						if (recvBytes == (int)recvBuffer.size())
 						{
@@ -70,18 +146,21 @@ namespace CMM
 				// 关闭连接
 				socket.close();
 				LogInfo("Connection closed for client: " << clientIP);
-				}));
-
-			// 清理已完成的任务
-			futures.erase(std::remove_if(futures.begin(), futures.end(), [](std::future<void>& future) {
-				return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-				}), futures.end());
+				});
+			// 定期清理已完成的线程（可选，或者根据需求设计更复杂的线程管理逻辑）
+			// 这里简单起见，我们不在循环中清理线程，而是在退出时统一处理
 		}
 
-		// 等待所有任务完成
-		for (auto& future : futures)
+		// 通知所有线程停止（如果需要安全退出）
+		stopThreads = true;
+
+		// 等待所有线程完成
+		for (auto& thread : threads)
 		{
-			future.wait();
+			if (thread.joinable()) // 确保线程可连接
+			{
+				thread.join();
+			}
 		}
 	}
 
